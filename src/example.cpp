@@ -10,18 +10,19 @@
 //
 // Delete or replace this file once Phase 1 begins.
 
-int main() {
+int main()
+{
     // C++17 feature: structured bindings — if this compiles, your standard is set correctly
     std::vector<std::pair<std::string, double>> params = {
-        {"kappa",  2.0},
-        {"theta",  0.04},
-        {"sigma",  0.3},
-        {"rho",   -0.7},
-        {"v0",     0.04}
-    };
+        {"kappa", 2.0},
+        {"theta", 0.04},
+        {"sigma", 0.3},
+        {"rho", -0.7},
+        {"v0", 0.04}};
 
     std::cout << "=== Heston MC — environment check ===\n";
-    for (auto& [name, value] : params) {   // structured binding: C++17
+    for (auto &[name, value] : params)
+    { // structured binding: C++17
         std::cout << "  " << name << " = " << value << "\n";
     }
     std::cout << "Compiler: OK | C++17: OK | Build task: OK\n";
