@@ -2,6 +2,8 @@
 #ifndef BLACK_SCHOLES_HPP
 #define BLACK_SCHOLES_HPP
 
+#include <string>
+
 class EuropeanOption
 {
 private:
@@ -19,10 +21,13 @@ public:
     double S;   // underlying stock price
     double q;   // dividend
 
+    std::string optType; // option name (call or put)
+
 public:
     // Constructors
     EuropeanOption();                              // Default call option
     EuropeanOption(const EuropeanOption &option2); // Copy of constructor
+    EuropeanOption(const std::string &optionType);
 
     // Destructors
     virtual ~EuropeanOption();

@@ -2,10 +2,10 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "C++: Debug active file",
+      "name": "C++: Debug project",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/${fileBasenameNoExtension}.exe",
+      "program": "${workspaceFolder}/build/option_pricing.exe",
       "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
@@ -13,14 +13,7 @@
       "externalConsole": false,
       "MIMode": "gdb",
       "miDebuggerPath": "D:/Apps/MinGW-w64/ucrt64/bin/gdb.exe",
-      "setupCommands": [
-        {
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        }
-      ],
-      "preLaunchTask": "C++: Build active file"
+      "preLaunchTask": "C++: Build entire project"
     }
   ]
 }

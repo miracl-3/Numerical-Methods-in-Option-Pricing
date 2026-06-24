@@ -32,15 +32,14 @@
         "-Wextra",
         "-g",
         "-I${workspaceFolder}/include",
-        "${workspaceFolder}/src/EuropeanOption.cpp",
-        "${workspaceFolder}/src/MCEngine.cpp",
-        "${workspaceFolder}/src/HestonSDE.cpp",
-        "${workspaceFolder}/src/RNG.cpp",
+        "${workspaceFolder}/src/black_scholes_european_option.cpp",
+        "${workspaceFolder}/src/monte_carlo_european_option.cpp",
+        "${workspaceFolder}/src/main.cpp",
         "-o",
-        "${workspaceFolder}/build/heston_mc.exe"
+        "${workspaceFolder}/build/option_pricing.exe"
       ],
       "group": "build",
-      "detail": "Compiles all src/*.cpp files → build/heston_mc.exe",
+      "detail": "Compiles all src/*.cpp files → build/option_price.exe",
       "problemMatcher": "$gcc"
     }
   ]
