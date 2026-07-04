@@ -16,7 +16,7 @@ double EuropeanOption::CallPrice() const
 {
     double tmp = vol * sqrt(T); // denominator = vol * sqrt(T)
 
-    double d1 = ((log(S / K) + (r - q + (vol * vol) * 0.5)) * T) / tmp;
+    double d1 = (log(S / K) + (r - q + 0.5 * vol * vol) * T) / tmp;
     double d2 = d1 - vol * sqrt(T);
 
     return S * exp(-q * T) * normalCDF(d1) - K * exp(-r * T) * normalCDF(d2);
@@ -40,7 +40,7 @@ void EuropeanOption::init()
     K = 65.0;      // fixed strike price
     T = 0.25;      // 3 months left until maturity or 1/4 of a year
     S = 60.0;      // current stock price
-    q = r;         // dividend
+    q = 0.0;       // dividend
     optType = "C"; // compute call option firce
 }
 

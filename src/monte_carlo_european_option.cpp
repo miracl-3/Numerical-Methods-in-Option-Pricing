@@ -17,7 +17,7 @@ void EuropeanOptionMonteCarlo::init()
     K = 65.0;      // fixed strike price
     T = 0.25;      // 3 months left until maturity or 1/4 of a year
     S = 60.0;      // current stock price
-    q = r;         // dividend
+    q = 0.0;       // dividend
     optType = "C"; // compute call option firce
 }
 
