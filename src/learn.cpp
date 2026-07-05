@@ -3,8 +3,7 @@
 using namespace std;
 
 // First exercise: print out input, its double and triple value
-void firstExercise()
-{
+void firstExercise() {
     cout << "Enter an integer: ";
 
     int input{};
@@ -19,8 +18,7 @@ void firstExercise()
 }
 
 // Second exercise: print out the subtraction and addition of two inputs
-void secondExercise()
-{
+void secondExercise() {
     // Output from the console to type in input
     cout << "Enter an integer: ";
 
@@ -44,11 +42,26 @@ void secondExercise()
     cout << firstInput << " - " << secondInput << " is " << firstInput - secondInput << '\n';
 }
 
-int main()
-{
+void doAnswer() { cout << "What should I print?" << "\n"; }
+
+void doPrint() {
+    for (int i = 1; i < 3; i++) {
+        cout << "What should I print?" << "\n";
+    }
+
+    cout << "In doPrint()" << "\n";
+}
+
+int main() {
     // firstExercise();
 
-    secondExercise();
+    // secondExercise();
+
+    cout << "Starting main()" << "\n";
+
+    doPrint();
+
+    cout << "Ending main()" << "\n";
 
     return 0;
 }
