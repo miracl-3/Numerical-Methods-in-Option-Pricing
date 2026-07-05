@@ -1,16 +1,15 @@
 // Include essential libraries
-#include <string>
+#include <algorithm>
 #include <cmath>
 #include <random>
-#include <algorithm>
 #include <stdexcept>
+#include <string>
 
 // Include header files
 #include "monte_carlo.hpp"
 
 // Initial default parameters
-void EuropeanOptionMonteCarlo::init()
-{
+void EuropeanOptionMonteCarlo::init() {
     // Initial all parameters
     r = 0.08;      // 8% risk-free interest rate
     vol = 0.30;    // standard deviation of stock returns
@@ -22,8 +21,7 @@ void EuropeanOptionMonteCarlo::init()
 }
 
 // Define the copy methods that copies other object' parameters
-void EuropeanOptionMonteCarlo::copy(const EuropeanOptionMonteCarlo &option)
-{
+void EuropeanOptionMonteCarlo::copy(const EuropeanOptionMonteCarlo &option) {
     r = option.r;
     vol = option.vol;
     K = option.K;
@@ -34,37 +32,26 @@ void EuropeanOptionMonteCarlo::copy(const EuropeanOptionMonteCarlo &option)
 }
 
 // Initialize constructor
-EuropeanOptionMonteCarlo::EuropeanOptionMonteCarlo()
-{
-    init();
-}
+EuropeanOptionMonteCarlo::EuropeanOptionMonteCarlo() { init(); }
 
 // Copy constructor
-EuropeanOptionMonteCarlo::EuropeanOptionMonteCarlo(
-    const EuropeanOptionMonteCarlo &option)
-{
+EuropeanOptionMonteCarlo::EuropeanOptionMonteCarlo(const EuropeanOptionMonteCarlo &option) {
     copy(option);
 }
 
 // Option-type constructor
-EuropeanOptionMonteCarlo::EuropeanOptionMonteCarlo(
-    const std::string &optionType)
-{
+EuropeanOptionMonteCarlo::EuropeanOptionMonteCarlo(const std::string &optionType) {
     init();
     optType = optionType;
 }
 
 // Destructor
-EuropeanOptionMonteCarlo::~EuropeanOptionMonteCarlo()
-{
-}
+EuropeanOptionMonteCarlo::~EuropeanOptionMonteCarlo() {}
 
 // Assignment constructor
-EuropeanOptionMonteCarlo &EuropeanOptionMonteCarlo::operator=(
-    const EuropeanOptionMonteCarlo &option)
-{
-    if (this == &option)
-    {
+EuropeanOptionMonteCarlo &
+EuropeanOptionMonteCarlo::operator=(const EuropeanOptionMonteCarlo &option) {
+    if (this == &option) {
         return *this;
     }
 
@@ -73,8 +60,7 @@ EuropeanOptionMonteCarlo &EuropeanOptionMonteCarlo::operator=(
 }
 
 // Random process of stock price path
-double EuropeanOptionMonteCarlo::generateStockPricePath(double z) const
-{
+double EuropeanOptionMonteCarlo::generateStockPricePath(double z) const {
     double drift = (r - q - 0.5 * vol * vol) * T;
     double diffusion = vol * std::sqrt(T) * z;
 
@@ -82,33 +68,26 @@ double EuropeanOptionMonteCarlo::generateStockPricePath(double z) const
 }
 
 // Call the function to compute option price
-double EuropeanOptionMonteCarlo::Price(std::size_t numberOfSimulations) const
-{
-    if (numberOfSimulations == 0)
-    {
+double EuropeanOptionMonteCarlo::Price(std::size_t numberOfSimulations) const {
+    if (numberOfSimulations == 0) {
         throw std::invalid_argument("Number of simulations must be positive.");
     }
 
-    if (optType == "C")
-    {
+    if (optType == "C") {
         return CallPrice(numberOfSimulations);
-    }
-    else
-    {
+    } else {
         return PutPrice(numberOfSimulations);
     }
 }
 
 // Compute the call option price
-double EuropeanOptionMonteCarlo::CallPrice(std::size_t numberOfSimulations) const
-{
+double EuropeanOptionMonteCarlo::CallPrice(std::size_t numberOfSimulations) const {
     std::mt19937 generator(42);
     std::normal_distribution<double> normal(0.0, 1.0);
 
     double payoffSum = 0.0;
 
-    for (std::size_t i = 0; i < numberOfSimulations; ++i)
-    {
+    for (std::size_t i = 0; i < numberOfSimulations; ++i) {
         double z = normal(generator);
         double ST = generateStockPricePath(z);
 
@@ -122,15 +101,13 @@ double EuropeanOptionMonteCarlo::CallPrice(std::size_t numberOfSimulations) cons
 }
 
 // Compute the put option price
-double EuropeanOptionMonteCarlo::PutPrice(std::size_t numberOfSimulations) const
-{
+double EuropeanOptionMonteCarlo::PutPrice(std::size_t numberOfSimulations) const {
     std::mt19937 generator(42);
     std::normal_distribution<double> normal(0.0, 1.0);
 
     double payoffSum = 0.0;
 
-    for (std::size_t i = 0; i < numberOfSimulations; ++i)
-    {
+    for (std::size_t i = 0; i < numberOfSimulations; ++i) {
         double z = normal(generator);
         double ST = generateStockPricePath(z);
 
@@ -143,14 +120,10 @@ double EuropeanOptionMonteCarlo::PutPrice(std::size_t numberOfSimulations) const
     return std::exp(-r * T) * averagePayoff;
 }
 
-void EuropeanOptionMonteCarlo::toggle()
-{
-    if (optType == "C")
-    {
+void EuropeanOptionMonteCarlo::toggle() {
+    if (optType == "C") {
         optType = "P";
-    }
-    else
-    {
+    } else {
         optType = "C";
     }
 }

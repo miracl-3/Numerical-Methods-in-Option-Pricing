@@ -23,6 +23,22 @@
       "problemMatcher": "$gcc"
     },
     {
+      "label": "C++: Run active file",
+      "type": "shell",
+      "command": "& '${workspaceFolder}/build/${fileBasenameNoExtension}.exe'",
+      "detail": "Runs build/<filename>.exe",
+      "problemMatcher": []
+    },
+    {
+      "label": "C++: Build and run active file",
+      "type": "shell",
+      "dependsOn": "C++: Build active file",
+      "dependsOrder": "sequence",
+      "command": "& '${workspaceFolder}/build/${fileBasenameNoExtension}.exe'",
+      "detail": "Builds and runs the currently open .cpp file",
+      "problemMatcher": []
+    },
+    {
       "label": "C++: Build entire project",
       "type": "shell",
       "command": "D:/Apps/MinGW-w64/ucrt64/bin/g++.exe",
@@ -39,8 +55,15 @@
         "${workspaceFolder}/build/option_pricing.exe"
       ],
       "group": "build",
-      "detail": "Compiles all src/*.cpp files → build/option_price.exe",
+      "detail": "Compiles the main thesis project files → build/option_pricing.exe",
       "problemMatcher": "$gcc"
+    },
+    {
+      "label": "C++: Run entire project",
+      "type": "shell",
+      "command": "& '${workspaceFolder}/build/option_pricing.exe'",
+      "detail": "Runs build/option_pricing.exe",
+      "problemMatcher": []
     }
   ]
 }

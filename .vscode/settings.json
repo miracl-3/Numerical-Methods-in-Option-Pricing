@@ -4,6 +4,12 @@
     "editor.formatOnSave": true,
     "editor.tabSize": 4,
     "editor.insertSpaces": true,
+    "[cpp]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
     "files.associations": {
         "*.hpp": "cpp",
         "*.cpp": "cpp"
@@ -12,6 +18,9 @@
     "C_Cpp.default.includePath": [
         "${workspaceFolder}/include"
     ],
+    "C_Cpp.formatting": "clangFormat",
+    "C_Cpp.clang_format_style": "file",
+    "C_Cpp.clang_format_fallbackStyle": "LLVM",
     "jupyter.notebookFileRoot": "${workspaceFolder}/notebooks",
     "terminal.integrated.defaultProfile.windows": "PowerShell"
 }
