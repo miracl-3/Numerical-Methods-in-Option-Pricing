@@ -36,7 +36,7 @@ numerical reference. The emphasis is numerical behavior and reproducibility.
 | [`binomial_american.cpp`](src/binomial_american.cpp) | American CRR tree, exercise at every node | Fine CRR tree |
 | [`monte_carlo_european.cpp`](src/monte_carlo_european.cpp) | Exact-terminal GBM simulation and uncertainty estimates | Black-Scholes |
 | [`monte_carlo_american.cpp`](src/monte_carlo_american.cpp) | Simulation of a prescribed exercise policy | Fine CRR tree |
-| [`variance_reduction.cpp`](src/variance_reduction.cpp) | Plain European MC, antithetic/control variates, and Newton-tuned importance sampling | Black-Scholes |
+| [`variance_reduction.cpp`](src/variance_reduction.cpp) | Plain European MC, antithetic/control variates, and basic Newton importance sampling | Black-Scholes |
 | [`lsm_american.cpp`](src/lsm_american.cpp) | Longstaff–Schwartz policy training and independent valuation | Fine CRR tree |
 
 Shared headers in `include/` hold the contract model, CRR implementation,
@@ -144,17 +144,19 @@ only to American references, and `--boundary-ratio` only to the prescribed-rule
 American simulation. Variance reduction requires an even `--paths` count.
 Zero maturity, zero volatility, and negative rates are handled explicitly.
 
-Importance sampling fits its Gaussian mean shift using damped Newton iterations
-on an independent pilot's log second moment. The fitted shift is frozen before
-valuation. `--train-paths` sets the pilot size separately for the control and
+Importance sampling uses the original basic Newton procedure directly on
+the pilot second moment. Start from the exercise threshold, apply corrections
+limited to `[-1, 1]`, and stop when the absolute gradient or shift change is
+below `1e-8` (at most 50 updates). Plug the approximate shift back into the
+likelihood-weighted pricing estimator. `--train-paths` sets the pilot size separately for the control and
 importance-sampling methods; both include their pilot work and fitting time.
-"Optimal shift" means the minimum of the empirical pilot objective within
-the `N(shift, 1)` family, rather than an exact population optimum. An all-zero
+The fitted shift is an approximation based on a finite pilot and the
+chosen stopping rules. An all-zero
 pilot fails explicitly with a request for more pilot paths.
 
 To inspect one fit, append `--newton-trace data/custom/newton.csv` to a
 `variance_reduction` command. Its result row records the fitted shift,
-iteration count, final gradient, initial/final log second moment, and status.
+iteration count, final gradient, initial/final second moment, and status.
 The experiment runner saves all benchmark traces in `newton_convergence.csv`
 and largest-budget median comparisons in `variance_summary.csv`.
 
@@ -168,13 +170,13 @@ plain MC across seeds 42–44:
 |---|---:|---:|
 | Antithetic variates | 50.4% | 41.3% |
 | Control variate | 85.4% | 58.0% |
-| Newton-tuned importance sampling | **89.5%** | **86.6%** |
+| basic Newton importance sampling | **89.5%** | **86.6%** |
 
 Each method uses 50,000 main-sample terminal payoff evaluations. The control
 and IS methods each use a further 2,000-path independent pilot. These are
 variance reductions, not runtime reductions. The corresponding median
 pilot-adjusted work factors are 6.60x (control) and 9.12x (IS) for the call,
-using payoff counts as a work proxy. The Newton fits converged in 3–4 steps.
+using payoff counts as a work proxy. The basic Newton fits converged in 5–6 updates.
 These are contract-specific demonstration results from three seeds; they do
 not imply a universal method ranking. See the full-precision
 [summary](data/experiments/variance_summary.csv) and

@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 COLORS = {"plain_mc": "#263b57", "antithetic": "#00857d", "control_variate": "#c16a2b",
           "importance_sampling": "#8061a3"}
 LABELS = {"plain_mc": "Plain MC", "antithetic": "Antithetic",
-          "control_variate": "Control variate", "importance_sampling": "IS (Newton pilot)"}
+          "control_variate": "Control variate", "importance_sampling": "IS (basic Newton)"}
 
 
 def style():
@@ -108,7 +108,7 @@ def convergence(data_dir, output_dir):
 def variance_reduction(data_dir, output_dir):
     data = pd.read_csv(data_dir / "variance_reduction.csv")
     fig, axes = plt.subplots(2, 2, figsize=(13, 9), layout="constrained")
-    fig.suptitle("European variance reduction with Newton-tuned importance sampling", fontsize=17, weight="bold")
+    fig.suptitle("European variance reduction with basic Newton importance sampling", fontsize=17, weight="bold")
     for ax, kind in zip(axes[0], ["call", "put"]):
         for method in COLORS:
             frame = data[(data.option_type == kind) & (data.method == method)]
@@ -135,7 +135,7 @@ def variance_reduction(data_dir, output_dir):
             bars = ax.bar(positions, factors, width=0.34, color=color, label=kind.title())
             ax.bar_label(bars, fmt="%.2fx", padding=3, fontsize=8)
         ax.axhline(1, color="#888888", ls="--", lw=1)
-        ax.set_xticks(np.arange(3), ["Antithetic", "Control variate", "IS (Newton pilot)"])
+        ax.set_xticks(np.arange(3), ["Antithetic", "Control variate", "IS (basic Newton)"])
         ax.set(title="Work-adjusted variance factor" if adjusted else "Estimator variance reduction factor",
                ylabel="Factor relative to plain MC (higher is better)")
         ax.margins(y=0.22)
@@ -145,8 +145,9 @@ def variance_reduction(data_dir, output_dir):
 
 def newton_convergence(data_dir, output_dir):
     data = pd.read_csv(data_dir / "newton_convergence.csv")
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4.8), layout="constrained")
-    fig.suptitle("Importance sampling: independent-pilot Newton optimization", fontsize=18, weight="bold")
+    fig, grid = plt.subplots(2, 2, figsize=(13, 8.5), layout="constrained")
+    axes = grid.flat
+    fig.suptitle("Importance sampling: basic Newton procedure and plug-in shift", fontsize=18, weight="bold")
     colors = {"call": "#8061a3", "put": "#00857d"}
     seeds = sorted(data.seed.unique())
     for (kind, seed), frame in data.groupby(["option_type", "seed"]):
@@ -154,18 +155,24 @@ def newton_convergence(data_dir, output_dir):
         alpha = 0.45 + 0.5 * seeds.index(seed) / max(1, len(seeds) - 1)
         options = dict(color=colors[kind], alpha=alpha, marker="o", markersize=4)
         axes[0].plot(frame.iteration, frame["shift"], label=f"{kind.title()}, seed {seed}", **options)
-        relative_moment = np.exp(frame.log_second_moment - frame.log_second_moment.iloc[0])
+        relative_moment = frame.second_moment / frame.second_moment.iloc[0]
         axes[1].plot(frame.iteration, relative_moment, **options)
-        residual = np.maximum(np.abs(frame.gradient) / (1 + np.abs(frame["shift"])), 1e-16)
+        residual = np.maximum(np.abs(frame.gradient), 1e-16)
         axes[2].semilogy(frame.iteration, residual, **options)
+        updates = frame[frame.iteration > 0]
+        axes[3].semilogy(updates.iteration, np.maximum(np.abs(updates["step"]), 1e-16), **options)
     axes[0].set(title="Shift learned from the pilot", xlabel="Newton iteration", ylabel="Gaussian proposal mean")
     axes[0].legend(fontsize=7, ncols=2)
     axes[1].set(title="Pilot second moment decreases", xlabel="Newton iteration",
-                ylabel=r"$\widehat M(\mu_k) / \widehat M(0)$")
-    axes[2].axhline(1e-10, color="#263b57", ls="--", lw=1, label="Stopping tolerance")
-    axes[2].set(title="First-order convergence check", xlabel="Newton iteration",
-                ylabel=r"$|\nabla \log\widehat M|\, /\, (1+|\mu|)$")
+                ylabel=r"$\widehat M(\mu_k) / \widehat M(\mu_0)$")
+    axes[2].axhline(1e-8, color="#263b57", ls="--", lw=1, label="Gradient tolerance")
+    axes[2].set(title="Original gradient stopping check", xlabel="Newton iteration",
+                ylabel=r"$|\widehat M'(\mu_k)|$")
     axes[2].legend(fontsize=8)
+    axes[3].axhline(1e-8, color="#263b57", ls="--", lw=1, label="Shift-change tolerance")
+    axes[3].set(title="Stop when either tolerance is met", xlabel="Newton iteration",
+                ylabel=r"$|\mu_k-\mu_{k-1}|$")
+    axes[3].legend(fontsize=8)
     for axis in axes:
         axis.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
     save(fig, output_dir, "newton_convergence")

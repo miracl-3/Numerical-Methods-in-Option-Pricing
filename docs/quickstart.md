@@ -33,7 +33,7 @@ explains the results, and can call an executable for a custom contract.
 | `binomial_american.cpp` | CRR backward induction with early exercise | A fine tree provides the numerical reference for both American simulation programs |
 | `monte_carlo_european.cpp` | European pricing by exact terminal-stock simulation | Baseline for the variance reduction study |
 | `monte_carlo_american.cpp` | Simulates a prescribed exercise rule | Simple American baseline; its expected policy value is a lower bound |
-| `variance_reduction.cpp` | Runs plain European MC, antithetic/control variates, and Newton-tuned importance sampling | Fits control and IS parameters on independent pilots, then compares sampling errors |
+| `variance_reduction.cpp` | Runs plain European MC, antithetic/control variates, and basic Newton importance sampling | Fits control and IS parameters on independent pilots, then compares sampling errors |
 | `lsm_american.cpp` | Learns an exercise rule, then values it on independent paths | More flexible American simulation method; compare with the fixed rule and American tree |
 
 The American simulation programs calculate their tree references by calling
@@ -128,8 +128,8 @@ To save the Newton iterations for importance sampling:
 .\build\variance_reduction.exe --type call --paths 100000 --train-paths 5000 --newton-trace data/custom/newton.csv
 ```
 
-The shift minimizes an empirical pilot second moment within the Gaussian
-mean-shift family. It is learned independently of the evaluation paths. Both
+The basic Newton updates give an approximate shift from the direct pilot
+second moment; the shift is then plugged into the pricing formula. It is learned independently of the evaluation paths. Both
 pilot-based methods include their additional payoff evaluations and fitting
 time. The saved `variance_summary.csv` gives the measured reductions; the
 `newton_convergence.csv` file and figure show how the optimizer converged.

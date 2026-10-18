@@ -27,10 +27,8 @@ Estimate estimate_method(const Config &config, const std::string &method,
             const double shifted_z = z + shift;
             const double payoff = c.payoff(terminal_stock(c, shifted_z));
             // f(z)/g(z) = exp(-shift*z + shift^2/2), z ~ N(shift, 1).
-            // Form the weighted payoff in log space to avoid 0 * infinity.
             const double log_weight = -shift * shifted_z + 0.5 * shift * shift;
-            observations.add(shift == 0.0 ? discount * payoff : payoff == 0.0 ? 0.0 :
-                std::exp(std::log(payoff) - c.rate * c.maturity + log_weight));
+            observations.add(payoff == 0.0 ? 0.0 : discount * payoff * std::exp(log_weight));
         } else {
             observations.add(discount * c.payoff(terminal_stock(c, z)));
         }
@@ -62,51 +60,45 @@ double fit_control_beta(const Config &config) {
 
 struct PilotObservation {
     double z;
-    double log_squared_payoff;
+    double discounted_payoff;
 };
 
 struct Objective {
-    double log_second_moment;
+    double second_moment;
     double gradient;
     double hessian;
 };
 
 // M_hat(mu) = mean[h(Z)^2 exp(mu^2/2 - mu*Z)], with pilot Z ~ N(0,1).
-// Minimize log(M_hat) for numerical stability; it has exactly the same minimizer.
-// Its gradient is mu - E_w[Z], and its Hessian is 1 + Var_w(Z) >= 1.
+// Evaluate the objective and its two derivatives directly, as in the original procedure.
 Objective pilot_objective(const std::vector<PilotObservation> &pilot,
                           std::size_t pilot_count, double shift) {
-    double maximum = -std::numeric_limits<double>::infinity();
-    for (const auto &observation : pilot)
-        maximum = std::max(maximum, observation.log_squared_payoff - shift * observation.z);
-    double weight_sum = 0.0;
-    double weighted_z_sum = 0.0;
+    Objective result{};
     for (const auto &observation : pilot) {
-        const double weight = std::exp(observation.log_squared_payoff - shift * observation.z - maximum);
-        weight_sum += weight;
-        weighted_z_sum += weight * observation.z;
+        const double difference = shift - observation.z;
+        const double weight = observation.discounted_payoff * observation.discounted_payoff *
+                              std::exp(0.5 * shift * shift - shift * observation.z);
+        result.second_moment += weight;
+        result.gradient += difference * weight;
+        result.hessian += (1.0 + difference * difference) * weight;
     }
-    const double weighted_mean = weighted_z_sum / weight_sum;
-    double weighted_squared_deviation = 0.0;
-    for (const auto &observation : pilot) {
-        const double weight = std::exp(observation.log_squared_payoff - shift * observation.z - maximum);
-        const double deviation = observation.z - weighted_mean;
-        weighted_squared_deviation += weight * deviation * deviation;
-    }
-    const Objective result{
-        0.5 * shift * shift + maximum + std::log(weight_sum) - std::log(static_cast<double>(pilot_count)),
-        shift - weighted_mean,
-        1.0 + weighted_squared_deviation / weight_sum};
-    if (!std::isfinite(result.log_second_moment) || !std::isfinite(result.gradient) ||
+    const double count = static_cast<double>(pilot_count);
+    result.second_moment /= count;
+    result.gradient /= count;
+    result.hessian /= count;
+    if (!std::isfinite(result.second_moment) || !std::isfinite(result.gradient) ||
         !std::isfinite(result.hessian))
-        throw std::overflow_error("Non-finite importance-sampling pilot objective.");
+        throw std::overflow_error("Direct Newton objective exceeded the floating-point range.");
+    if (result.second_moment <= 0.0 || result.hessian <= 0.0)
+        throw std::runtime_error("Direct Newton requires a positive objective and second derivative.");
     return result;
 }
 
 struct NewtonStep {
     double shift;
     Objective objective;
-    double step_scale;
+    double step;
+    bool step_limited;
 };
 
 struct ShiftFit {
@@ -132,46 +124,44 @@ ShiftFit fit_importance_shift(const Config &config) {
         if (!std::isfinite(stock)) throw std::overflow_error("Non-finite pilot stock price.");
         const double payoff = c.payoff(stock);
         if (payoff > 0.0)
-            pilot.push_back({z, 2.0 * (std::log(payoff) - c.rate * c.maturity)});
+            pilot.push_back({z, std::exp(-c.rate * c.maturity) * payoff});
     }
     fit.positive_payoffs = pilot.size();
     if (pilot.empty())
         throw std::runtime_error("Importance-sampling pilot contains no positive payoffs; "
                                  "increase --train-paths or use a less extreme contract.");
 
-    double shift = 0.0;
+    // Start at the standardized exercise threshold, as in the original call code.
+    // The put uses the corresponding lower-tail initialization.
+    const double threshold = (std::log(c.strike / c.spot) -
+        (c.rate - 0.5 * c.volatility * c.volatility) * c.maturity) /
+        (c.volatility * std::sqrt(c.maturity));
+    double shift = c.type == OptionType::Call ? std::max(0.0, threshold) : std::min(0.0, threshold);
     Objective objective = pilot_objective(pilot, config.training_paths, shift);
-    fit.trace.push_back({shift, objective, 0.0});
-    constexpr std::size_t max_iterations = 100;
-    constexpr double tolerance = 1e-10;
+    fit.trace.push_back({shift, objective, 0.0, false});
+    constexpr std::size_t max_iterations = 50;
+    constexpr double tolerance = 1e-8;
     for (std::size_t iteration = 0; iteration <= max_iterations; ++iteration) {
-        if (std::abs(objective.gradient) <= tolerance * (1.0 + std::abs(shift))) {
+        if (std::abs(objective.gradient) < tolerance) {
             fit.shift = shift;
-            fit.status = "converged";
+            fit.status = "converged_gradient";
             return fit;
         }
         if (iteration == max_iterations)
             throw std::runtime_error("Importance-sampling Newton solver did not converge.");
-        const double direction = objective.gradient / objective.hessian;
-        double step_scale = 1.0;
-        bool accepted = false;
-        for (int backtrack = 0; backtrack < 40; ++backtrack) {
-            const double candidate = shift - step_scale * direction;
-            const Objective next = pilot_objective(pilot, config.training_paths, candidate);
-            const double rounding_slack = 16.0 * std::numeric_limits<double>::epsilon() *
-                                          (1.0 + std::abs(objective.log_second_moment));
-            if (next.log_second_moment <= objective.log_second_moment -
-                1e-4 * step_scale * objective.gradient * direction + rounding_slack) {
-                shift = candidate;
-                objective = next;
-                fit.trace.push_back({shift, objective, step_scale});
-                accepted = true;
-                break;
-            }
-            step_scale *= 0.5;
+        const double raw_step = objective.gradient / objective.hessian;
+        // Preserve the original simple safeguard: limit each Newton correction to [-1,1].
+        const double correction = std::clamp(raw_step, -1.0, 1.0);
+        const double next_shift = shift - correction;
+        const double actual_step = next_shift - shift;
+        objective = pilot_objective(pilot, config.training_paths, next_shift);
+        shift = next_shift;
+        fit.trace.push_back({shift, objective, actual_step, correction != raw_step});
+        if (std::abs(actual_step) < tolerance) {
+            fit.shift = shift;
+            fit.status = "converged_step";
+            return fit;
         }
-        if (!accepted)
-            throw std::runtime_error("Importance-sampling Newton line search failed.");
     }
     throw std::logic_error("Unreachable Newton solver state.");
 }
@@ -186,7 +176,7 @@ void write_newton_trace(const Config &config, const ShiftFit &fit) {
     std::ofstream output(path);
     if (!output) throw std::runtime_error("Cannot open Newton trace: " + config.newton_trace);
     output << "option_type,spot,strike,rate,volatility,maturity,training_paths,seed,"
-              "positive_payoffs,iteration,shift,log_second_moment,gradient,hessian,step_scale,status\n";
+              "positive_payoffs,iteration,shift,second_moment,gradient,hessian,step,step_limited,status\n";
     output << std::setprecision(17);
     const auto &c = config.contract;
     for (std::size_t i = 0; i < fit.trace.size(); ++i) {
@@ -194,8 +184,9 @@ void write_newton_trace(const Config &config, const ShiftFit &fit) {
         output << (c.type == OptionType::Call ? "call" : "put") << ',' << c.spot << ','
             << c.strike << ',' << c.rate << ',' << c.volatility << ',' << c.maturity << ','
             << config.training_paths << ',' << config.seed << ',' << fit.positive_payoffs << ','
-            << i << ',' << step.shift << ',' << step.objective.log_second_moment << ','
-            << step.objective.gradient << ',' << step.objective.hessian << ',' << step.step_scale
+            << i << ',' << step.shift << ',' << step.objective.second_moment << ','
+            << step.objective.gradient << ',' << step.objective.hessian << ',' << step.step
+            << ',' << step.step_limited
             << ',' << (i + 1 == fit.trace.size() ? fit.status : "iterating") << '\n';
     }
     output.flush();
@@ -204,7 +195,7 @@ void write_newton_trace(const Config &config, const ShiftFit &fit) {
 
 int main(int argc, char **argv) {
     return run_experiment(argc, argv,
-        "European variance reduction: antithetic, control variate, Newton-tuned importance sampling.",
+        "European variance reduction: antithetic, control variate, basic Newton importance sampling.",
         [](const Config &config) {
             if (config.paths % 2 != 0)
                 throw std::invalid_argument("--paths must be even for the antithetic comparison.");
@@ -234,8 +225,8 @@ int main(int argc, char **argv) {
                         if (!fit.trace.empty()) {
                             row.newton_iterations = fit.trace.size() - 1;
                             row.newton_gradient = fit.trace.back().objective.gradient;
-                            row.newton_log_second_moment_initial = fit.trace.front().objective.log_second_moment;
-                            row.newton_log_second_moment_final = fit.trace.back().objective.log_second_moment;
+                            row.newton_second_moment_initial = fit.trace.front().objective.second_moment;
+                            row.newton_second_moment_final = fit.trace.back().objective.second_moment;
                         }
                     }
                     return estimate_method(config, method, row.control_beta, row.importance_shift);

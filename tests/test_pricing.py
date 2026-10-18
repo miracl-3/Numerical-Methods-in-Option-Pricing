@@ -94,13 +94,20 @@ class PricingTests(unittest.TestCase):
                 result = next(row for row in rows if row["method"] == "importance_sampling")
                 with trace_path.open(newline="", encoding="utf-8") as source:
                     trace = list(csv.DictReader(source))
-                self.assertEqual(result["newton_status"], "converged")
+                self.assertIn(result["newton_status"], ["converged_gradient", "converged_step"])
                 self.assertEqual(len(trace), int(result["newton_iterations"]) + 1)
-                self.assertEqual(trace[-1]["status"], "converged")
-                self.assertLess(abs(float(trace[-1]["gradient"])), 1e-8)
+                self.assertEqual(trace[-1]["status"], result["newton_status"])
+                stopping_field = "gradient" if result["newton_status"] == "converged_gradient" else "step"
+                self.assertLess(abs(float(trace[-1][stopping_field])), 1e-8)
                 self.assertEqual(float(trace[-1]["shift"]), float(result["importance_shift"]))
-                self.assertTrue(all(float(step["hessian"]) >= 1.0 for step in trace))
-                objectives = [float(step["log_second_moment"]) for step in trace]
+                self.assertTrue(all(float(step["hessian"]) > 0.0 for step in trace))
+                self.assertTrue(all(abs(float(step["step"])) <= 1.0 for step in trace))
+                self.assertAlmostEqual(float(trace[0]["shift"]), 0.0 if kind == "call" else -0.15)
+                # The first correction must be Newton on the raw second moment.
+                initial = trace[0]
+                correction = max(-1.0, min(1.0, float(initial["gradient"]) / float(initial["hessian"])))
+                self.assertAlmostEqual(float(trace[1]["shift"]), float(initial["shift"]) - correction)
+                objectives = [float(step["second_moment"]) for step in trace]
                 self.assertLess(objectives[-1], objectives[0])
                 self.assertTrue(all(b <= a + 1e-12 for a, b in zip(objectives, objectives[1:])))
                 shift_sign = 1 if kind == "call" else -1
@@ -112,7 +119,7 @@ class PricingTests(unittest.TestCase):
             rows = self.price("variance_reduction", paths=paths, train_paths=2000)
             results.append(next(row for row in rows if row["method"] == "importance_sampling"))
         for field in ["importance_shift", "newton_iterations", "newton_gradient",
-                      "newton_log_second_moment_initial", "newton_log_second_moment_final"]:
+                      "newton_second_moment_initial", "newton_second_moment_final"]:
             self.assertEqual(results[0][field], results[1][field])
 
     def test_newton_shift_against_independent_quadrature(self):

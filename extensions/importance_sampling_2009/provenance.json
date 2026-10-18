@@ -1,0 +1,110 @@
+{
+  "purpose": "Preserved log-objective and damped-Newton extension; independent of the six-program main build.",
+  "original_files": {
+    "variance_reduction.cpp": {
+      "copied_from": "src/variance_reduction.cpp",
+      "sha256": "ee4e30629d094631d57173c1bd3376967e1610a75b52d68400d3deafc95ca176"
+    },
+    "include/model.hpp": {
+      "copied_from": "include/model.hpp",
+      "sha256": "27e6e0b1cc251dbe000c9cf39ab7544013df6a038f765cc0103e4b14bcc01d1e"
+    },
+    "include/binomial.hpp": {
+      "copied_from": "include/binomial.hpp",
+      "sha256": "01dd2ac3b513b38d1ee2eaf1ce8b8349fff22236051350bb1d61486e791bd028"
+    },
+    "include/experiment.hpp": {
+      "copied_from": "include/experiment.hpp",
+      "sha256": "cfa6a26f25c8ffe8a0648c671f85aad5a16fea7594ab0bef68015f53a9f865c7"
+    },
+    "results/variance_reduction.csv": {
+      "copied_from": "data/experiments/variance_reduction.csv",
+      "sha256": "a386d99818c6da5a9448ef554873634265007ceb62dc93b9eac0354957761eed"
+    },
+    "results/variance_summary.csv": {
+      "copied_from": "data/experiments/variance_summary.csv",
+      "sha256": "8a78f2bd3d80592d4c6d8c4e664d1882894f73e068fd7fb6d159ad8a923c1048"
+    },
+    "results/newton_convergence.csv": {
+      "copied_from": "data/experiments/newton_convergence.csv",
+      "sha256": "5376b99156fc997f95c0da5d608869e254599a7253e0eaa41b18ad0d755d2218"
+    },
+    "results/variance_reduction.png": {
+      "copied_from": "figures/variance_reduction.png",
+      "sha256": "9686d54eda744111e1911d8f8e9080a9ee6ae3c5782273045bfa43857b17931b"
+    },
+    "results/variance_reduction.svg": {
+      "copied_from": "figures/variance_reduction.svg",
+      "sha256": "712c49fd4a63ad28fb07bb025149e62a3dd0bc26c814b6f18498958661475766"
+    },
+    "results/newton_convergence.png": {
+      "copied_from": "figures/newton_convergence.png",
+      "sha256": "648804784633a5ce7314723d34dd600d09569f5a141afd70c5c6fd17dfff9462"
+    },
+    "results/newton_convergence.svg": {
+      "copied_from": "figures/newton_convergence.svg",
+      "sha256": "67db48a7fb8d16ed8ae877f548003408aad70508dd86db6324a9f57fe7e216d1"
+    }
+  },
+  "reference": "https://doi.org/10.1214/09-AAP595",
+  "main_profile_at_snapshot": {
+    "generated_at_utc": "2026-10-18T16:54:06.205861+00:00",
+    "profile": "quick",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.13",
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "european_path_counts": [
+      1000,
+      5000,
+      20000,
+      50000
+    ],
+    "contract": {
+      "spot": 100,
+      "strike": 100,
+      "rate": 0.05,
+      "volatility": 0.2,
+      "maturity": 1,
+      "dividend_yield": 0
+    },
+    "american_reference_steps": 2000,
+    "american_fixed_boundary_ratio": 0.75,
+    "variance_reduction_pilot_paths": 2000,
+    "importance_sampling": {
+      "shift_selection": "damped Newton on independent-pilot log second moment",
+      "pilot_seed_stream": 3,
+      "evaluation_seed_stream": 0,
+      "gradient_tolerance": "1e-10 * (1 + abs(shift))",
+      "maximum_iterations": 100,
+      "optimality": "empirical minimum in the N(shift,1) proposal family"
+    },
+    "notes": [
+      "CSV prices come from the C++ executables.",
+      "Monte Carlo 95% intervals are asymptotic.",
+      "LSM intervals condition on one trained policy; retraining variability is excluded.",
+      "CRR is a numerical reference, not an exact American price.",
+      "Runtimes exclude reference-price computation and CSV I/O; include both pilots, Newton fitting, and LSM training.",
+      "Seed reproducibility is within the same compiler and standard-library implementation."
+    ],
+    "build": {
+      "compiler": "g++.EXE (Rev5, Built by MSYS2 project) 16.1.0",
+      "cpp_standard": "c++17",
+      "optimization": "-O2",
+      "source_sha256": {
+        "src/binomial_american.cpp": "3b80aa0d4990767396d57cd1b117427467fe7c1f03971def5cf0a1ebade47d7e",
+        "src/binomial_european.cpp": "746a7b561e553f0fe23d214fe247b79fc0f9497cbb1001026da8af6ab50eef4f",
+        "src/lsm_american.cpp": "635f296f26c3d9b1ec00500df6f66f57490f1ebabc94a679a6242d9dab564e48",
+        "src/monte_carlo_american.cpp": "75bca555d60932cee7746d6be66f777cb6f91cba6854c1da482cd385bb2ae7b0",
+        "src/monte_carlo_european.cpp": "13170c38f266a554d004a0c6cbd92c06b07fa3b4ed5766f59b9d3d276e651490",
+        "src/variance_reduction.cpp": "ee4e30629d094631d57173c1bd3376967e1610a75b52d68400d3deafc95ca176",
+        "include/binomial.hpp": "01dd2ac3b513b38d1ee2eaf1ce8b8349fff22236051350bb1d61486e791bd028",
+        "include/experiment.hpp": "cfa6a26f25c8ffe8a0648c671f85aad5a16fea7594ab0bef68015f53a9f865c7",
+        "include/model.hpp": "27e6e0b1cc251dbe000c9cf39ab7544013df6a038f765cc0103e4b14bcc01d1e"
+      }
+    }
+  }
+}

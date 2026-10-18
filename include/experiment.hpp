@@ -96,8 +96,8 @@ struct Row {
     std::size_t reference_steps = 0;
     std::size_t newton_iterations = 0;
     double newton_gradient = 0.0;
-    double newton_log_second_moment_initial = 0.0;
-    double newton_log_second_moment_final = 0.0;
+    double newton_second_moment_initial = 0.0;
+    double newton_second_moment_final = 0.0;
     std::string newton_status = "not_applicable";
 };
 
@@ -114,7 +114,7 @@ inline void write_csv(std::ostream &out, const Config &config, const std::vector
            "independent_samples,payoff_evaluations,seed,price,standard_error,ci_lower,ci_upper,"
            "benchmark,absolute_error,runtime_ms,control_beta,importance_shift,boundary_ratio,"
            "exercise_fraction,reference_steps,newton_iterations,newton_gradient,"
-           "newton_log_second_moment_initial,newton_log_second_moment_final,newton_status\n";
+           "newton_second_moment_initial,newton_second_moment_final,newton_status\n";
     out << std::setprecision(17);
     const auto &c = config.contract;
     constexpr double z95 = 1.959963984540054;
@@ -133,7 +133,7 @@ inline void write_csv(std::ostream &out, const Config &config, const std::vector
             << row.control_beta << ',' << row.importance_shift << ',' << config.boundary_ratio
             << ',' << row.exercise_fraction << ',' << row.reference_steps << ','
             << row.newton_iterations << ',' << row.newton_gradient << ','
-            << row.newton_log_second_moment_initial << ',' << row.newton_log_second_moment_final
+            << row.newton_second_moment_initial << ',' << row.newton_second_moment_final
             << ',' << row.newton_status << '\n';
     }
 }

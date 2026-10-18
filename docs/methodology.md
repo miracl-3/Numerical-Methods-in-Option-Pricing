@@ -88,7 +88,7 @@ from the learned LSM policy.
    runtime; its randomness is not included in the conditional standard error.
 3. **Importance sampling.** Draw $Z\sim N(\mu,1)$ and multiply the discounted
    payoff by $\exp(-\mu Z+\mu^2/2)$. An independent pilot selects the mean
-   shift by damped Newton minimization of an empirical second moment. Freeze
+   shift by the basic Newton procedure on an empirical second moment. Freeze
    the fitted shift before valuation. This is ordinary likelihood-ratio
    weighting, not self-normalized sampling. Nonzero-shift weighted payoffs
    are formed in log space.
@@ -101,67 +101,71 @@ observations internally. The plots report both estimator variance ratios and
 ratios adjusted by terminal payoff counts. Counts are a work proxy: they do
 not equate actual CPU costs, random-number generation costs, or memory use.
 
-### Newton optimization of the importance-sampling shift
+### Basic Newton procedure for the importance-sampling shift
 
-Write $h(z)=e^{-rT}(S_T(z)-K)^+$ for a call, or the corresponding put payoff.
-The variance of a weighted observation is its second moment minus the square
-of the option price. The latter does not depend on the shift, so minimize
+The procedure is: calculate a pilot objective, apply Newton's method to obtain
+an approximate shift, then plug that fixed shift into the pricing estimator.
+Let $h(z)$ be the discounted European payoff and $z_i\sim N(0,1)$ the fixed
+pilot sample. The second moment of the importance-weighted payoff is estimated by
 
-$$M(\mu)=\mathbb E_{Z\sim N(0,1)}
-  [h(Z)^2 e^{\mu^2/2-\mu Z}].$$
+$$\widehat M(\mu)=\frac1m\sum_{i=1}^m
+ h(z_i)^2\exp(\mu^2/2-\mu z_i).$$
 
-Generate $m$ pilot normals once and keep them fixed during optimization:
+The option price does not depend on the shift. Its squared value is therefore
+constant in the variance expression, so the second moment is the objective
+used to choose the shift. Differentiating the fixed-sample objective gives
 
-$$\widehat M_m(\mu)=\frac1m\sum_{i=1}^{m}
- h(z_i)^2e^{\mu^2/2-\mu z_i}.$$
+$$\widehat M'(\mu)=\frac1m\sum_i
+ h(z_i)^2(\mu-z_i)\exp(\mu^2/2-\mu z_i),$$
 
-The code minimizes $\ell(\mu)=\log\widehat M_m(\mu)$, which has the same
-minimizer. Log-sum-exp evaluation prevents overflow/underflow of the objective
-weights. Let $w_i(\mu)$ be normalized weights proportional to
-$h(z_i)^2 e^{-\mu z_i}$. Then
+$$\widehat M''(\mu)=\frac1m\sum_i
+ h(z_i)^2[1+(\mu-z_i)^2]\exp(\mu^2/2-\mu z_i).$$
 
-$$\ell'(\mu)=\mu-\mathbb E_w[Z],\qquad
-  \ell''(\mu)=1+\operatorname{Var}_w(Z)\geq1.$$
+Newton's correction is $d_k=\widehat M'(\mu_k)/\widehat M''(\mu_k)$.
+The original implementation limits this correction to $[-1,1]$, so the
+implemented update is
 
-Starting at zero, Newton's step is
-$\mu_{k+1}=\mu_k-\alpha_k\ell'(\mu_k)/\ell''(\mu_k)$.
-An Armijo backtracking line search selects $\alpha_k$ from
-$1,1/2,1/4,\ldots$ and checks objective decrease with a floating-point rounding
-allowance. The first-order stopping condition is
-$|\ell'(\mu)|\leq10^{-10}(1+|\mu|)$, with at most 100 Newton steps.
-Failure to converge produces an explicit error. There is no arbitrary cap
-on the fitted shift and no heuristic-shift fallback.
+$$\mu_{k+1}=\mu_k-\operatorname{clip}(d_k,-1,1).$$
 
-Provided the pilot contains a positive payoff, this strictly convex objective
-has a unique minimizer. **Optimality refers to the sampled pilot objective
-within the fixed-variance Gaussian mean-shift family.** A finite pilot does
-not reveal the exact population optimum or the unrestricted zero-variance
-importance distribution. If the pilot contains no positive payoffs, fitting
-fails with a request for more pilot paths; an all-zero pilot cannot identify
-a useful shift. Zero-volatility and expired contracts skip the pilot and use
-the deterministic payoff.
+For a call, the initial shift is $\max(0,a)$, where
 
-The control pilot uses seed stream 1, the IS pilot stream 3, and the main
-valuation samples stream 0. Pilot fitting, including Newton iterations, is
-inside `runtime_ms`. Objective evaluations reuse stored pilot payoffs, so they
-add CPU work but no further terminal payoff evaluations. Standard errors
-condition on the fitted pilot parameters; repeated seeds expose fitting
-variability as well as main-sample noise.
+$$a=\frac{\log(K/S_0)-(r-\sigma^2/2)T}{\sigma\sqrt T}.$$
 
-`--newton-trace PATH` exports each accepted iteration, including the initial
-point: shift, log second moment, gradient, Hessian, damping factor, positive
-pilot-payoff count, and convergence status. Pricing rows add final diagnostics
-in `newton_iterations`, `newton_gradient`,
-`newton_log_second_moment_initial`, `newton_log_second_moment_final`, and
-`newton_status`. These are zero/`not_applicable` for other methods; deterministic
-IS has status `deterministic`. Its trace contains only the CSV header.
-The curated traces are collected in `data/experiments/newton_convergence.csv`.
+For a put, use the corresponding lower-tail initialization $\min(0,a)$.
+As in the original routine, stop when either
+$|\widehat M'(\mu_k)|<10^{-8}$ or
+$|\mu_{k+1}-\mu_k|<10^{-8}$, allowing up to 50 Newton updates.
+The resulting shift is an approximation obtained from a finite pilot sample.
 
-Validation compares the learned shift against a population second moment
-computed by numerical integration and minimized with a separate golden-section
-search. It also checks objective decrease, convergence residuals, independent
-evaluation-budget behavior, pilot accounting, rare-payoff failure, and
-deterministic edge cases.
+With the shift fixed at $\widehat\mu$, generate independent
+$\epsilon_j\sim N(0,1)$, put $Z_j=\epsilon_j+\widehat\mu$, and price using
+
+$$\widehat V_N=\frac1N\sum_{j=1}^N
+ h(Z_j)\exp(-\widehat\mu Z_j+\widehat\mu^2/2).$$
+
+The likelihood ratio corrects for the shifted sampling density. The pilot
+uses stream 3 and pricing uses stream 0; the control-variate pilot uses
+stream 1. Both pilot generation and Newton iterations are included in runtime.
+Repeated scans reuse the same pilot payoffs and are not counted as additional
+simulated payoff evaluations.
+
+`--newton-trace PATH` saves the initial point and every Newton update. Columns
+`second_moment`, `gradient`, and `hessian` are the direct objective and its
+first two derivatives. `step` is the signed shift change, and `step_limited`
+records whether the original correction limit was used. Final status is
+`converged_gradient` or `converged_step`, identifying the stopping rule.
+Pricing rows report `newton_iterations`, `newton_gradient`,
+`newton_second_moment_initial`, `newton_second_moment_final`, and
+`newton_status`. Other methods use zero/`not_applicable` in those fields.
+
+An all-zero pilot cannot identify a shift and produces a clear error asking
+for more pilot paths. Failed convergence or non-finite direct calculations
+also produce an error. Zero-volatility and expired contracts skip fitting
+and report `deterministic`; their trace contains only the CSV header.
+
+Numerical checks verify the original initialization, direct Newton correction,
+step limit, stopping rules, and pricing accuracy. An independently integrated
+objective provides a further software check on the fitted shift.
 
 ## Longstaff-Schwartz least-squares Monte Carlo
 
@@ -229,6 +233,3 @@ reference resolution. `steps=1` for all exact-terminal European simulations.
 - Huynh, H. T., Lai, V. S., and Soumaré, I. (2008).
   [*Stochastic Simulation and Applications in Finance with MATLAB Programs*](https://doi.org/10.1002/9781118467374).
   John Wiley & Sons.
-- Jourdain, B., and Lelong, J. (2009).
-  [Robust Adaptive Importance Sampling for Normal Random Vectors](https://doi.org/10.1214/09-AAP595).
-  *The Annals of Applied Probability*, 19(5), 1687–1718.
