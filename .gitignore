@@ -38,3 +38,11 @@ Makefile
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Project-local recovery archive, tool cache, and alternate Python environments
+.local-archive/
+.cache/
+.venv-*/
+
+# Ad-hoc outputs; curated data/experiments and figures are intentionally versioned
+data/custom/

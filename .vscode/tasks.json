@@ -4,12 +4,12 @@
     {
       "label": "C++: Build active file",
       "type": "shell",
-      "command": "D:/Apps/MinGW-w64/ucrt64/bin/g++.exe",
+      "command": "g++",
       "args": [
         "-std=c++17",
         "-Wall",
         "-Wextra",
-        "-g",
+        "-O2",
         "-I${workspaceFolder}/include",
         "${file}",
         "-o",
@@ -41,28 +41,20 @@
     {
       "label": "C++: Build entire project",
       "type": "shell",
-      "command": "D:/Apps/MinGW-w64/ucrt64/bin/g++.exe",
-      "args": [
-        "-std=c++17",
-        "-Wall",
-        "-Wextra",
-        "-g",
-        "-I${workspaceFolder}/include",
-        "${workspaceFolder}/src/black_scholes_european_option.cpp",
-        "${workspaceFolder}/src/monte_carlo_european_option.cpp",
-        "${workspaceFolder}/src/main.cpp",
-        "-o",
-        "${workspaceFolder}/build/option_pricing.exe"
-      ],
+      "command": "python",
+      "args": ["${workspaceFolder}/scripts/build.py", "--debug"],
+      "options": {"cwd": "${workspaceFolder}"},
       "group": "build",
-      "detail": "Compiles the main thesis project files → build/option_pricing.exe",
+      "detail": "Builds the six independent pricing executables",
       "problemMatcher": "$gcc"
     },
     {
-      "label": "C++: Run entire project",
+      "label": "C++: Validate project",
       "type": "shell",
-      "command": "& '${workspaceFolder}/build/option_pricing.exe'",
-      "detail": "Runs build/option_pricing.exe",
+      "command": "python",
+      "args": ["${workspaceFolder}/tests/test_pricing.py", "-v"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "detail": "Runs numerical validation against the six executables",
       "problemMatcher": []
     }
   ]

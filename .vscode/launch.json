@@ -2,17 +2,17 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "C++: Debug project",
+      "name": "C++: Debug active pricing executable",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/option_pricing.exe",
+      "program": "${workspaceFolder}/build/${fileBasenameNoExtension}.exe",
       "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],
       "externalConsole": false,
       "MIMode": "gdb",
-      "miDebuggerPath": "D:/Apps/MinGW-w64/ucrt64/bin/gdb.exe",
+      "miDebuggerPath": "gdb",
       "preLaunchTask": "C++: Build entire project",
       "setupCommands": [
         {

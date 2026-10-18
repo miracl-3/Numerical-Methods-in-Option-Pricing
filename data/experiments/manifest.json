@@ -1,0 +1,50 @@
+{
+  "generated_at_utc": "2026-10-18T16:20:40.787960+00:00",
+  "profile": "quick",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.13",
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "european_path_counts": [
+    1000,
+    5000,
+    20000,
+    50000
+  ],
+  "contract": {
+    "spot": 100,
+    "strike": 100,
+    "rate": 0.05,
+    "volatility": 0.2,
+    "maturity": 1,
+    "dividend_yield": 0
+  },
+  "american_reference_steps": 2000,
+  "notes": [
+    "CSV prices come from the C++ executables.",
+    "Monte Carlo 95% intervals are asymptotic.",
+    "LSM intervals condition on one trained policy; retraining variability is excluded.",
+    "CRR is a numerical reference, not an exact American price.",
+    "Runtimes exclude reference-price computation and CSV I/O; include control pilot/LSM training.",
+    "Seed reproducibility is within the same compiler and standard-library implementation."
+  ],
+  "build": {
+    "compiler": "g++.EXE (Rev5, Built by MSYS2 project) 16.1.0",
+    "cpp_standard": "c++17",
+    "optimization": "-O2",
+    "source_sha256": {
+      "src/binomial_american.cpp": "3b80aa0d4990767396d57cd1b117427467fe7c1f03971def5cf0a1ebade47d7e",
+      "src/binomial_european.cpp": "746a7b561e553f0fe23d214fe247b79fc0f9497cbb1001026da8af6ab50eef4f",
+      "src/lsm_american.cpp": "635f296f26c3d9b1ec00500df6f66f57490f1ebabc94a679a6242d9dab564e48",
+      "src/monte_carlo_american.cpp": "75bca555d60932cee7746d6be66f777cb6f91cba6854c1da482cd385bb2ae7b0",
+      "src/monte_carlo_european.cpp": "13170c38f266a554d004a0c6cbd92c06b07fa3b4ed5766f59b9d3d276e651490",
+      "src/variance_reduction.cpp": "902e43f4c3dba504bc186030e9920704aea49fc1f67aeabf564a65a4dcc735ed",
+      "include/binomial.hpp": "01dd2ac3b513b38d1ee2eaf1ce8b8349fff22236051350bb1d61486e791bd028",
+      "include/experiment.hpp": "23970e6292524a6718983d8d354cded3481f3210778f74a313d680bf48530f23",
+      "include/model.hpp": "27e6e0b1cc251dbe000c9cf39ab7544013df6a038f765cc0103e4b14bcc01d1e"
+    }
+  }
+}

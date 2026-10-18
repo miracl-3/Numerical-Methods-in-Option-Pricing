@@ -1,15 +1,7 @@
-# Core numerical stack
-numpy>=1.26.0
-pandas>=2.1.0
-scipy>=1.11.0
-
-# Plotting
-matplotlib>=3.8.0
-
-# Jupyter environment
-jupyter>=1.0.0
-notebook>=7.0.0
-ipykernel>=6.25.0
-
-# Optional but useful: progress bars in notebooks
-tqdm>=4.66.0
+# Python >= 3.10. C++ builds and numerical tests use only the standard library.
+numpy>=1.26,<3
+pandas>=2.1,<4
+matplotlib>=3.8,<4
+jupyterlab>=4,<5
+ipykernel>=6.25,<8
+nbclient>=0.10,<1
