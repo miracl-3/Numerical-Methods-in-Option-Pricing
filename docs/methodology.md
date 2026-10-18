@@ -62,7 +62,8 @@ a precise convergence-rate or confidence-coverage study.
 ### American baseline: prescribed stopping policy
 
 The baseline simulates exact GBM transitions on an exercise grid and exercises
-an in-the-money put when $S_t\leq0.85K$ by default. The boundary is configurable.
+an in-the-money put when $S_t\leq0.85K$ by default. The boundary is configurable;
+the curated comparison uses $0.75K$ to expose a deliberately suboptimal policy.
 For calls with $r<0$, the optional prescribed boundary is $S_t\geq bK$.
 For non-dividend-paying calls with $r\geq0$, both American simulation programs
 use the known optimal policy of holding until maturity.
@@ -86,20 +87,81 @@ from the learned LSM policy.
    estimator is unbiased. Pilot work is included in the payoff count and
    runtime; its randomness is not included in the conditional standard error.
 3. **Importance sampling.** Draw $Z\sim N(\mu,1)$ and multiply the discounted
-   payoff by $\exp(-\mu Z+\mu^2/2)$. The heuristic shift moves sampling toward
-   positive payoffs: $\mu=\operatorname{clip}(a+0.5,0,4)$ for a call and
-   $\mu=\operatorname{clip}(a-0.5,-4,0)$ for a put, where
-   $a=[\log(K/S_0)-(r-\sigma^2/2)T]/(\sigma\sqrt T)$.
-   This is ordinary likelihood-ratio weighting, not self-normalized sampling.
-   Nonzero-shift weighted payoffs are formed in log space. The shift is a
-   heuristic and is not guaranteed to reduce variance for every contract.
+   payoff by $\exp(-\mu Z+\mu^2/2)$. An independent pilot selects the mean
+   shift by damped Newton minimization of an empirical second moment. Freeze
+   the fitted shift before valuation. This is ordinary likelihood-ratio
+   weighting, not self-normalized sampling. Nonzero-shift weighted payoffs
+   are formed in log space.
 
 All methods have the same main-sample terminal payoff budget. The control
-method has an additional pilot, reported separately. Methods share main random
+and importance-sampling methods each have an additional pilot of the same
+size, reported separately. Methods share main random
 draws to make comparisons less noisy; each method still uses independent
 observations internally. The plots report both estimator variance ratios and
 ratios adjusted by terminal payoff counts. Counts are a work proxy: they do
 not equate actual CPU costs, random-number generation costs, or memory use.
+
+### Newton optimization of the importance-sampling shift
+
+Write $h(z)=e^{-rT}(S_T(z)-K)^+$ for a call, or the corresponding put payoff.
+The variance of a weighted observation is its second moment minus the square
+of the option price. The latter does not depend on the shift, so minimize
+
+$$M(\mu)=\mathbb E_{Z\sim N(0,1)}
+  [h(Z)^2 e^{\mu^2/2-\mu Z}].$$
+
+Generate $m$ pilot normals once and keep them fixed during optimization:
+
+$$\widehat M_m(\mu)=\frac1m\sum_{i=1}^{m}
+ h(z_i)^2e^{\mu^2/2-\mu z_i}.$$
+
+The code minimizes $\ell(\mu)=\log\widehat M_m(\mu)$, which has the same
+minimizer. Log-sum-exp evaluation prevents overflow/underflow of the objective
+weights. Let $w_i(\mu)$ be normalized weights proportional to
+$h(z_i)^2 e^{-\mu z_i}$. Then
+
+$$\ell'(\mu)=\mu-\mathbb E_w[Z],\qquad
+  \ell''(\mu)=1+\operatorname{Var}_w(Z)\geq1.$$
+
+Starting at zero, Newton's step is
+$\mu_{k+1}=\mu_k-\alpha_k\ell'(\mu_k)/\ell''(\mu_k)$.
+An Armijo backtracking line search selects $\alpha_k$ from
+$1,1/2,1/4,\ldots$ and checks objective decrease with a floating-point rounding
+allowance. The first-order stopping condition is
+$|\ell'(\mu)|\leq10^{-10}(1+|\mu|)$, with at most 100 Newton steps.
+Failure to converge produces an explicit error. There is no arbitrary cap
+on the fitted shift and no heuristic-shift fallback.
+
+Provided the pilot contains a positive payoff, this strictly convex objective
+has a unique minimizer. **Optimality refers to the sampled pilot objective
+within the fixed-variance Gaussian mean-shift family.** A finite pilot does
+not reveal the exact population optimum or the unrestricted zero-variance
+importance distribution. If the pilot contains no positive payoffs, fitting
+fails with a request for more pilot paths; an all-zero pilot cannot identify
+a useful shift. Zero-volatility and expired contracts skip the pilot and use
+the deterministic payoff.
+
+The control pilot uses seed stream 1, the IS pilot stream 3, and the main
+valuation samples stream 0. Pilot fitting, including Newton iterations, is
+inside `runtime_ms`. Objective evaluations reuse stored pilot payoffs, so they
+add CPU work but no further terminal payoff evaluations. Standard errors
+condition on the fitted pilot parameters; repeated seeds expose fitting
+variability as well as main-sample noise.
+
+`--newton-trace PATH` exports each accepted iteration, including the initial
+point: shift, log second moment, gradient, Hessian, damping factor, positive
+pilot-payoff count, and convergence status. Pricing rows add final diagnostics
+in `newton_iterations`, `newton_gradient`,
+`newton_log_second_moment_initial`, `newton_log_second_moment_final`, and
+`newton_status`. These are zero/`not_applicable` for other methods; deterministic
+IS has status `deterministic`. Its trace contains only the CSV header.
+The curated traces are collected in `data/experiments/newton_convergence.csv`.
+
+Validation compares the learned shift against a population second moment
+computed by numerical integration and minimized with a separate golden-section
+search. It also checks objective decrease, convergence residuals, independent
+evaluation-budget behavior, pilot accounting, rare-payoff failure, and
+deterministic edge cases.
 
 ## Longstaff-Schwartz least-squares Monte Carlo
 
@@ -128,7 +190,8 @@ certified upper/lower confidence bracket for the true American price.
 ## Reproducibility and accounting
 
 The master seed is recorded in every row. SplitMix64 derives separate seed
-streams for pilot fitting, LSM training, and LSM evaluation. The engine is
+streams for pilot fitting, LSM training, and LSM evaluation. Stream identifiers
+are local to each independent executable. The engine is
 `std::mt19937_64`; `std::normal_distribution` is implementation-dependent, so
 identical seeds do not imply identical samples across compilers or C++ standard
 libraries. Numerical tests use financial identities and tolerances rather than
@@ -160,3 +223,12 @@ reference resolution. `steps=1` for all exact-terminal European simulations.
   *Review of Financial Studies*, 14(1), 113–147.
 - Owen, A. B. *Monte Carlo Theory, Methods and Examples*,
   [Chapter 8: Variance Reduction](https://artowen.su.domains/mc/Ch-var-basic.pdf).
+- Glasserman, P. (2003).
+  [*Monte Carlo Methods in Financial Engineering*](https://doi.org/10.1007/978-0-387-21617-1).
+  Springer.
+- Huynh, H. T., Lai, V. S., and Soumaré, I. (2008).
+  [*Stochastic Simulation and Applications in Finance with MATLAB Programs*](https://doi.org/10.1002/9781118467374).
+  John Wiley & Sons.
+- Jourdain, B., and Lelong, J. (2009).
+  [Robust Adaptive Importance Sampling for Normal Random Vectors](https://doi.org/10.1214/09-AAP595).
+  *The Annals of Applied Probability*, 19(5), 1687–1718.

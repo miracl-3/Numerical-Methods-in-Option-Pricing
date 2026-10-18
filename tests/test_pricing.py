@@ -1,11 +1,13 @@
 """Financial identities, numerical accuracy, statistical accounting, and CLI validation."""
 
 import argparse
+import csv
 import math
 from pathlib import Path
 import subprocess
 import sys
 import unittest
+from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -75,12 +77,107 @@ class PricingTests(unittest.TestCase):
         self.assertEqual(int(rows["plain_mc"]["independent_samples"]), 100000)
         self.assertEqual(int(rows["antithetic"]["payoff_evaluations"]), 100000)
         self.assertEqual(int(rows["control_variate"]["payoff_evaluations"]), 102000)
+        self.assertEqual(int(rows["importance_sampling"]["payoff_evaluations"]), 102000)
+        self.assertEqual(int(rows["importance_sampling"]["training_paths"]), 2000)
         for row in rows.values():
             self.assertLess(abs(float(row["price"]) - float(row["benchmark"])),
                             6 * float(row["standard_error"]))
-        for method in ["antithetic", "control_variate"]:
+        for method in ["antithetic", "control_variate", "importance_sampling"]:
             self.assertLess(float(rows[method]["standard_error"]), float(rows["plain_mc"]["standard_error"]))
 
+    def test_newton_convergence_trace(self):
+        for kind in ["call", "put"]:
+            with TemporaryDirectory(prefix="newton-test-") as directory:
+                trace_path = Path(directory) / "trace.csv"
+                rows = self.price("variance_reduction", type=kind, paths=2000,
+                                  train_paths=5000, newton_trace=trace_path)
+                result = next(row for row in rows if row["method"] == "importance_sampling")
+                with trace_path.open(newline="", encoding="utf-8") as source:
+                    trace = list(csv.DictReader(source))
+                self.assertEqual(result["newton_status"], "converged")
+                self.assertEqual(len(trace), int(result["newton_iterations"]) + 1)
+                self.assertEqual(trace[-1]["status"], "converged")
+                self.assertLess(abs(float(trace[-1]["gradient"])), 1e-8)
+                self.assertEqual(float(trace[-1]["shift"]), float(result["importance_shift"]))
+                self.assertTrue(all(float(step["hessian"]) >= 1.0 for step in trace))
+                objectives = [float(step["log_second_moment"]) for step in trace]
+                self.assertLess(objectives[-1], objectives[0])
+                self.assertTrue(all(b <= a + 1e-12 for a, b in zip(objectives, objectives[1:])))
+                shift_sign = 1 if kind == "call" else -1
+                self.assertGreater(shift_sign * float(result["importance_shift"]), 0)
+
+    def test_shift_fitting_does_not_depend_on_evaluation_budget(self):
+        results = []
+        for paths in [2000, 10000]:
+            rows = self.price("variance_reduction", paths=paths, train_paths=2000)
+            results.append(next(row for row in rows if row["method"] == "importance_sampling"))
+        for field in ["importance_shift", "newton_iterations", "newton_gradient",
+                      "newton_log_second_moment_initial", "newton_log_second_moment_final"]:
+            self.assertEqual(results[0][field], results[1][field])
+
+    def test_newton_shift_against_independent_quadrature(self):
+        # Validate the sampled optimizer against the population objective by quadrature,
+        # without using its derivatives, stored pilot draws, or Newton iteration.
+        for kind in ["call", "put"]:
+            rows = self.price("variance_reduction", type=kind, paths=10000, train_paths=100000)
+            row = next(result for result in rows if result["method"] == "importance_sampling")
+            direction = 1 if kind == "call" else -1
+            dz = 20 / 10000
+            samples = []
+            for i in range(10001):
+                z = -10 + i * dz
+                stock = 100 * math.exp(0.03 + 0.2 * z)
+                payoff = math.exp(-0.05) * max(direction * (stock - 100), 0)
+                trapezoid = 0.5 if i in [0, 10000] else 1
+                samples.append((z, trapezoid * payoff ** 2 * math.exp(-0.5 * z * z) * dz /
+                                math.sqrt(2 * math.pi)))
+
+            def second_moment(shift):
+                return sum(weight * math.exp(0.5 * shift * shift - shift * z)
+                           for z, weight in samples)
+
+            # Golden-section search is independent of the C++ Newton solver.
+            left, right = (-4.0, 0.0) if kind == "put" else (0.0, 4.0)
+            ratio = (math.sqrt(5) - 1) / 2
+            for _ in range(50):
+                lower = right - ratio * (right - left)
+                upper = left + ratio * (right - left)
+                if second_moment(lower) < second_moment(upper):
+                    right = upper
+                else:
+                    left = lower
+            population_optimum = 0.5 * (left + right)
+            self.assertLess(abs(float(row["importance_shift"]) - population_optimum), 0.04)
+            previous_shift = 0.35 if kind == "call" else -0.65
+            self.assertLess(second_moment(float(row["importance_shift"])), second_moment(previous_shift))
+
+    def test_no_positive_importance_pilot_fails_explicitly(self):
+        result = subprocess.run([str(executable("variance_reduction", BUILD_DIR)),
+                                "--type", "call", "--spot", "1", "--volatility", "0.01",
+                                "--paths", "100", "--train-paths", "100"],
+                                capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("pilot contains no positive payoffs", result.stderr)
+        self.assertEqual(result.stdout, "")
+
+    def test_deterministic_importance_skips_pilot_and_optimizer(self):
+        rows = self.price("variance_reduction", volatility=0, spot=80, paths=100, train_paths=100)
+        row = next(result for result in rows if result["method"] == "importance_sampling")
+        self.assertEqual(row["newton_status"], "deterministic")
+        self.assertEqual(int(row["newton_iterations"]), 0)
+        self.assertEqual(int(row["training_paths"]), 0)
+        self.assertEqual(int(row["payoff_evaluations"]), 100)
+
+    def test_newton_trace_cannot_overwrite_pricing_output(self):
+        with TemporaryDirectory(prefix="newton-output-test-") as directory:
+            path = str(Path(directory) / "same.csv")
+            result = subprocess.run([str(executable("variance_reduction", BUILD_DIR)),
+                                    "--paths", "100", "--train-paths", "100",
+                                    "--output", path, "--newton-trace", path],
+                                    capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("must be different files", result.stderr)
+            self.assertFalse(Path(path).exists())
     def test_importance_sampling_otm_call_and_put(self):
         for kind, spot in [("call", 80), ("put", 120)]:
             rows = self.price("variance_reduction", type=kind, spot=spot,

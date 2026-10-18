@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-10-18T16:20:40.787960+00:00",
+  "generated_at_utc": "2026-10-18T16:54:06.205861+00:00",
   "profile": "quick",
   "platform": "Windows-11-10.0.26200-SP0",
   "python": "3.12.13",
@@ -23,12 +23,22 @@
     "dividend_yield": 0
   },
   "american_reference_steps": 2000,
+  "american_fixed_boundary_ratio": 0.75,
+  "variance_reduction_pilot_paths": 2000,
+  "importance_sampling": {
+    "shift_selection": "damped Newton on independent-pilot log second moment",
+    "pilot_seed_stream": 3,
+    "evaluation_seed_stream": 0,
+    "gradient_tolerance": "1e-10 * (1 + abs(shift))",
+    "maximum_iterations": 100,
+    "optimality": "empirical minimum in the N(shift,1) proposal family"
+  },
   "notes": [
     "CSV prices come from the C++ executables.",
     "Monte Carlo 95% intervals are asymptotic.",
     "LSM intervals condition on one trained policy; retraining variability is excluded.",
     "CRR is a numerical reference, not an exact American price.",
-    "Runtimes exclude reference-price computation and CSV I/O; include control pilot/LSM training.",
+    "Runtimes exclude reference-price computation and CSV I/O; include both pilots, Newton fitting, and LSM training.",
     "Seed reproducibility is within the same compiler and standard-library implementation."
   ],
   "build": {
@@ -41,9 +51,9 @@
       "src/lsm_american.cpp": "635f296f26c3d9b1ec00500df6f66f57490f1ebabc94a679a6242d9dab564e48",
       "src/monte_carlo_american.cpp": "75bca555d60932cee7746d6be66f777cb6f91cba6854c1da482cd385bb2ae7b0",
       "src/monte_carlo_european.cpp": "13170c38f266a554d004a0c6cbd92c06b07fa3b4ed5766f59b9d3d276e651490",
-      "src/variance_reduction.cpp": "902e43f4c3dba504bc186030e9920704aea49fc1f67aeabf564a65a4dcc735ed",
+      "src/variance_reduction.cpp": "ee4e30629d094631d57173c1bd3376967e1610a75b52d68400d3deafc95ca176",
       "include/binomial.hpp": "01dd2ac3b513b38d1ee2eaf1ce8b8349fff22236051350bb1d61486e791bd028",
-      "include/experiment.hpp": "23970e6292524a6718983d8d354cded3481f3210778f74a313d680bf48530f23",
+      "include/experiment.hpp": "cfa6a26f25c8ffe8a0648c671f85aad5a16fea7594ab0bef68015f53a9f865c7",
       "include/model.hpp": "27e6e0b1cc251dbe000c9cf39ab7544013df6a038f765cc0103e4b14bcc01d1e"
     }
   }

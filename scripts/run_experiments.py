@@ -8,6 +8,8 @@ from pathlib import Path
 import platform
 import subprocess
 from datetime import datetime, timezone
+from tempfile import TemporaryDirectory
+from statistics import median
 
 from build import ROOT, METHODS, executable
 
@@ -30,6 +32,34 @@ def write_rows(destination, rows):
           f" ({len(rows)} rows)", flush=True)
 
 
+def summarize_variance(rows):
+    largest = max(int(row["paths"]) for row in rows)
+    summaries = []
+    for kind in ["call", "put"]:
+        selected = [row for row in rows if row["option_type"] == kind and int(row["paths"]) == largest]
+        baseline = {row["seed"]: row for row in selected if row["method"] == "plain_mc"}
+        for method in ["antithetic", "control_variate", "importance_sampling"]:
+            values = [row for row in selected if row["method"] == method]
+            variance_factors = [(float(baseline[row["seed"]]["standard_error"]) /
+                                 float(row["standard_error"])) ** 2 for row in values]
+            work_factors = [factor * int(baseline[row["seed"]]["payoff_evaluations"]) /
+                            int(row["payoff_evaluations"]) for factor, row in zip(variance_factors, values)]
+            reductions = [100 * (1 - 1 / factor) for factor in variance_factors]
+            summaries.append({
+                "option_type": kind, "method": method, "paths": largest, "seeds": len(values),
+                "training_paths": int(values[0]["training_paths"]),
+                "median_variance_reduction_pct": median(reductions),
+                "min_variance_reduction_pct": min(reductions),
+                "max_variance_reduction_pct": max(reductions),
+                "median_variance_factor": median(variance_factors),
+                "median_work_adjusted_factor": median(work_factors),
+                "median_importance_shift": median(float(row["importance_shift"]) for row in values),
+                "max_newton_iterations": max(int(row["newton_iterations"]) for row in values),
+                "max_absolute_newton_gradient": max(abs(float(row["newton_gradient"])) for row in values),
+            })
+    return summaries
+
+
 def collect(build_dir, output_dir, quick=False):
     build_dir, output_dir = Path(build_dir).resolve(), Path(output_dir).resolve()
     for method in METHODS:
@@ -38,7 +68,7 @@ def collect(build_dir, output_dir, quick=False):
     path_counts = [1000, 5000, 20000, 50000] if quick else [1000, 5000, 20000, 100000, 500000]
     seeds = [42, 43, 44] if quick else list(range(42, 50))
     references = {"reference_steps": 2000}
-    trees, mc, variance, american, exercise_grid = [], [], [], [], []
+    trees, mc, variance, american, exercise_grid, newton = [], [], [], [], [], []
     for option_type in ["call", "put"]:
         for steps in [25, 50, 75, 100, 200, 400, 800]:
             for method in ["binomial_european", "binomial_american"]:
@@ -46,17 +76,26 @@ def collect(build_dir, output_dir, quick=False):
         for paths in path_counts:
             for seed in seeds:
                 mc.extend(run("monte_carlo_european", build_dir, type=option_type, paths=paths, seed=seed))
-                variance.extend(run("variance_reduction", build_dir, type=option_type,
-                                    paths=paths, train_paths=2000, seed=seed))
+                with TemporaryDirectory(prefix="pricing-newton-") as directory:
+                    trace_path = Path(directory) / "trace.csv"
+                    options = {"newton_trace": trace_path} if paths == path_counts[-1] else {}
+                    variance.extend(run("variance_reduction", build_dir, type=option_type,
+                                        paths=paths, train_paths=2000, seed=seed, **options))
+                    if options:
+                        with trace_path.open(newline="", encoding="utf-8") as source:
+                            newton.extend(csv.DictReader(source))
     write_rows(output_dir / "tree_convergence.csv", trees)
     write_rows(output_dir / "mc_convergence.csv", mc)
     write_rows(output_dir / "variance_reduction.csv", variance)
+    write_rows(output_dir / "variance_summary.csv", summarize_variance(variance))
+    write_rows(output_dir / "newton_convergence.csv", newton)
 
     for paths in ([2000, 10000, 50000] if quick else [5000, 20000, 100000]):
         for seed in seeds:
             for method in ["monte_carlo_american", "lsm_american"]:
+                policy_options = {"boundary_ratio": 0.75} if method == "monte_carlo_american" else {}
                 american.extend(run(method, build_dir, paths=paths, train_paths=max(2000, paths // 2),
-                                    steps=50, seed=seed, **references))
+                                    steps=50, seed=seed, **references, **policy_options))
     write_rows(output_dir / "american_convergence.csv", american)
     for steps in [10, 25, 50, 100]:
         for seed in seeds:
@@ -71,11 +110,18 @@ def collect(build_dir, output_dir, quick=False):
         "contract": {"spot": 100, "strike": 100, "rate": 0.05, "volatility": 0.2,
                      "maturity": 1, "dividend_yield": 0},
         "american_reference_steps": 2000,
+        "american_fixed_boundary_ratio": 0.75,
+        "variance_reduction_pilot_paths": 2000,
+        "importance_sampling": {"shift_selection": "damped Newton on independent-pilot log second moment",
+                                "pilot_seed_stream": 3, "evaluation_seed_stream": 0,
+                                "gradient_tolerance": "1e-10 * (1 + abs(shift))",
+                                "maximum_iterations": 100,
+                                "optimality": "empirical minimum in the N(shift,1) proposal family"},
         "notes": ["CSV prices come from the C++ executables.",
                   "Monte Carlo 95% intervals are asymptotic.",
                   "LSM intervals condition on one trained policy; retraining variability is excluded.",
                   "CRR is a numerical reference, not an exact American price.",
-                  "Runtimes exclude reference-price computation and CSV I/O; include control pilot/LSM training.",
+                  "Runtimes exclude reference-price computation and CSV I/O; include both pilots, Newton fitting, and LSM training.",
                   "Seed reproducibility is within the same compiler and standard-library implementation."],
     }
     build_metadata = build_dir / "build_metadata.json"

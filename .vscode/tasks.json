@@ -2,55 +2,50 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "C++: Build active file",
-      "type": "shell",
-      "command": "g++",
-      "args": [
-        "-std=c++17",
-        "-Wall",
-        "-Wextra",
-        "-O2",
-        "-I${workspaceFolder}/include",
-        "${file}",
-        "-o",
-        "${workspaceFolder}/build/${fileBasenameNoExtension}.exe"
-      ],
+      "label": "C++: Build entire project",
+      "type": "process",
+      "command": "python",
+      "args": ["${workspaceFolder}/scripts/build.py"],
+      "options": {"cwd": "${workspaceFolder}"},
       "group": {
         "kind": "build",
         "isDefault": true
       },
-      "detail": "Compiles the currently open .cpp file → build/<filename>.exe",
+      "detail": "Builds all six optimized pricing executables",
       "problemMatcher": "$gcc"
     },
     {
       "label": "C++: Run active file",
-      "type": "shell",
-      "command": "& '${workspaceFolder}/build/${fileBasenameNoExtension}.exe'",
+      "type": "process",
+      "command": "${workspaceFolder}/build/${fileBasenameNoExtension}.exe",
+      "options": {"cwd": "${workspaceFolder}"},
       "detail": "Runs build/<filename>.exe",
       "problemMatcher": []
     },
     {
       "label": "C++: Build and run active file",
-      "type": "shell",
-      "dependsOn": "C++: Build active file",
+      "type": "process",
+      "dependsOn": "C++: Build entire project",
       "dependsOrder": "sequence",
-      "command": "& '${workspaceFolder}/build/${fileBasenameNoExtension}.exe'",
+      "command": "${workspaceFolder}/build/${fileBasenameNoExtension}.exe",
+      "options": {"cwd": "${workspaceFolder}"},
       "detail": "Builds and runs the currently open .cpp file",
       "problemMatcher": []
     },
     {
-      "label": "C++: Build entire project",
-      "type": "shell",
+      "label": "C++: Build debug",
+      "type": "process",
       "command": "python",
       "args": ["${workspaceFolder}/scripts/build.py", "--debug"],
       "options": {"cwd": "${workspaceFolder}"},
       "group": "build",
-      "detail": "Builds the six independent pricing executables",
+      "detail": "Builds the six pricing executables with debug symbols",
       "problemMatcher": "$gcc"
     },
     {
       "label": "C++: Validate project",
-      "type": "shell",
+      "type": "process",
+      "dependsOn": "C++: Build entire project",
       "command": "python",
       "args": ["${workspaceFolder}/tests/test_pricing.py", "-v"],
       "options": {"cwd": "${workspaceFolder}"},

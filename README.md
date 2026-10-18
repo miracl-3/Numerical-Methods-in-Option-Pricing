@@ -8,6 +8,10 @@ notebook turn their CSV output into convergence studies and visual explanations.
 The project connects stochastic simulation, dynamic programming, regression,
 and numerical verification in one compact research portfolio.
 
+**Start here:** [How the files connect and how to run them](docs/quickstart.md).
+This guide gives one Windows workflow, the role of each file, and examples of
+running a single method.
+
 ![Pricing convergence and exercise-policy comparison](figures/convergence.png)
 
 ## Research questions
@@ -32,7 +36,7 @@ numerical reference. The emphasis is numerical behavior and reproducibility.
 | [`binomial_american.cpp`](src/binomial_american.cpp) | American CRR tree, exercise at every node | Fine CRR tree |
 | [`monte_carlo_european.cpp`](src/monte_carlo_european.cpp) | Exact-terminal GBM simulation and uncertainty estimates | Black-Scholes |
 | [`monte_carlo_american.cpp`](src/monte_carlo_american.cpp) | Simulation of a prescribed exercise policy | Fine CRR tree |
-| [`variance_reduction.cpp`](src/variance_reduction.cpp) | Plain European MC plus all three variance reduction techniques | Black-Scholes |
+| [`variance_reduction.cpp`](src/variance_reduction.cpp) | Plain European MC, antithetic/control variates, and Newton-tuned importance sampling | Black-Scholes |
 | [`lsm_american.cpp`](src/lsm_american.cpp) | Longstaff–Schwartz policy training and independent valuation | Fine CRR tree |
 
 Shared headers in `include/` hold the contract model, CRR implementation,
@@ -82,9 +86,11 @@ On macOS/Linux, activate with `source .venv-portfolio/bin/activate`.
 
 The quick profile uses seeds 42–44 and smaller path budgets. Omit `--quick`
 for eight seeds and European budgets up to 500,000 paths. The scripts produce
-five CSV datasets and a manifest under `data/experiments/`, plus PNG and SVG
+seven CSV datasets and a manifest under `data/experiments/`, plus PNG and SVG
 figures under `figures/`. A build manifest records compiler details and source
-hashes. The checked-in example results use the quick profile.
+hashes. The checked-in example results use the quick profile. The illustrated
+American baseline deliberately uses a suboptimal `0.75 K` boundary to make
+policy bias visible; the executable's configurable default remains `0.85 K`.
 
 ### CMake alternative, including MSVC
 
@@ -126,17 +132,56 @@ On macOS/Linux use `./build/<name>` without `.exe`.
 | `--type` | put | `call` or `put` |
 | `--steps` | 50 | Tree intervals or American exercise intervals |
 | `--paths` | 100000 | Main/evaluation sample path count |
-| `--train-paths` | 50000 | LSM training paths or independent control-variate pilot |
+| `--train-paths` | 50000 | LSM training paths or each independent control/importance-sampling pilot |
 | `--reference-steps` | 2000 | CRR resolution for American reference prices |
 | `--boundary-ratio` | 0.85 | Prescribed American MC boundary as a multiple of strike |
 | `--seed` | 42 | Master seed for deterministic random streams |
 
 European simulations use exact terminal sampling, so `--steps` does not change
 their calculation. Tree programs ignore simulation controls. `--train-paths`
-applies only to LSM and the control-variate pilot. `--reference-steps` applies
+applies to LSM and both pilot-fitted variance reduction methods. `--reference-steps` applies
 only to American references, and `--boundary-ratio` only to the prescribed-rule
 American simulation. Variance reduction requires an even `--paths` count.
 Zero maturity, zero volatility, and negative rates are handled explicitly.
+
+Importance sampling fits its Gaussian mean shift using damped Newton iterations
+on an independent pilot's log second moment. The fitted shift is frozen before
+valuation. `--train-paths` sets the pilot size separately for the control and
+importance-sampling methods; both include their pilot work and fitting time.
+"Optimal shift" means the minimum of the empirical pilot objective within
+the `N(shift, 1)` family, rather than an exact population optimum. An all-zero
+pilot fails explicitly with a request for more pilot paths.
+
+To inspect one fit, append `--newton-trace data/custom/newton.csv` to a
+`variance_reduction` command. Its result row records the fitted shift,
+iteration count, final gradient, initial/final log second moment, and status.
+The experiment runner saves all benchmark traces in `newton_convergence.csv`
+and largest-budget median comparisons in `variance_summary.csv`.
+
+### Current benchmark results
+
+For `S0 = K = 100`, `r = 0.05`, `sigma = 0.20`, and `T = 1`, the quick
+profile gives the following median estimator-variance reductions relative to
+plain MC across seeds 42–44:
+
+| Technique | European call | European put |
+|---|---:|---:|
+| Antithetic variates | 50.4% | 41.3% |
+| Control variate | 85.4% | 58.0% |
+| Newton-tuned importance sampling | **89.5%** | **86.6%** |
+
+Each method uses 50,000 main-sample terminal payoff evaluations. The control
+and IS methods each use a further 2,000-path independent pilot. These are
+variance reductions, not runtime reductions. The corresponding median
+pilot-adjusted work factors are 6.60x (control) and 9.12x (IS) for the call,
+using payoff counts as a work proxy. The Newton fits converged in 3–4 steps.
+These are contract-specific demonstration results from three seeds; they do
+not imply a universal method ranking. See the full-precision
+[summary](data/experiments/variance_summary.csv) and
+[Newton traces](data/experiments/newton_convergence.csv).
+
+An updated, concise [LaTeX thesis entry](docs/cv_thesis.tex) uses these measured
+call-benchmark results and the independently evaluated LSM comparison.
 
 ## Notebook and visual explanations
 
@@ -150,15 +195,17 @@ read-only review; rerunning the C++ exploration cell requires a local build.
 |---|---|
 | [Convergence](figures/convergence.png) | Tree refinement, pointwise MC intervals, repeated-seed RMSE, and exercise-policy bias |
 | [Variance reduction](figures/variance_reduction.png) | Standard errors and variance factors for all three techniques, including pilot work |
+| [Newton convergence](figures/newton_convergence.png) | Fitted shifts, pilot second-moment reduction, and gradient convergence |
 | [LSM exercise grid](figures/lsm_exercise_grid.png) | Sensitivity to exercise-date resolution and variability across training/evaluation seeds |
 | [CRR teaching diagram](figures/binomial_tree.png) | Recombination, terminal payoffs, and the backward-induction decision |
 
 ## Validation and interpretation
 
-The numerical suite checks known Black-Scholes prices, put-call parity at
+The 27-test numerical suite checks known Black-Scholes prices, put-call parity at
 multiple maturities, tree convergence, American put bounds, non-dividend call
 exercise behavior, scale homogeneity, Monte Carlo accuracy, variance accounting,
-importance-sampling likelihood weights, independent-policy LSM behavior,
+importance-sampling likelihood weights, Newton convergence and independently
+integrated population objectives, independent-policy LSM behavior,
 deterministic edge cases, reproducibility, and invalid inputs.
 
 For the default contract, the analytical European call and put prices are

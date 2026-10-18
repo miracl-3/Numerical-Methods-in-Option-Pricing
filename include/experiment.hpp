@@ -22,6 +22,7 @@ struct Config {
     std::uint64_t seed = 42;
     double boundary_ratio = 0.85;
     std::string output;
+    std::string newton_trace;
 };
 
 inline std::size_t integer(const std::string &value, const std::string &name) {
@@ -61,6 +62,7 @@ inline Config parse_config(int argc, char **argv) {
         else if (name == "--seed") config.seed = integer(value, name);
         else if (name == "--boundary-ratio") config.boundary_ratio = real(value, name);
         else if (name == "--output") config.output = value;
+        else if (name == "--newton-trace") config.newton_trace = value;
         else if (name == "--type") {
             if (value != "call" && value != "put")
                 throw std::invalid_argument("--type must be call or put.");
@@ -92,6 +94,11 @@ struct Row {
     double importance_shift = 0.0;
     double exercise_fraction = 0.0;
     std::size_t reference_steps = 0;
+    std::size_t newton_iterations = 0;
+    double newton_gradient = 0.0;
+    double newton_log_second_moment_initial = 0.0;
+    double newton_log_second_moment_final = 0.0;
+    std::string newton_status = "not_applicable";
 };
 
 template <class Function> inline auto timed(Function function, double &milliseconds) {
@@ -106,7 +113,8 @@ inline void write_csv(std::ostream &out, const Config &config, const std::vector
     out << "method,option_type,spot,strike,rate,volatility,maturity,steps,paths,training_paths,"
            "independent_samples,payoff_evaluations,seed,price,standard_error,ci_lower,ci_upper,"
            "benchmark,absolute_error,runtime_ms,control_beta,importance_shift,boundary_ratio,"
-           "exercise_fraction,reference_steps\n";
+           "exercise_fraction,reference_steps,newton_iterations,newton_gradient,"
+           "newton_log_second_moment_initial,newton_log_second_moment_final,newton_status\n";
     out << std::setprecision(17);
     const auto &c = config.contract;
     constexpr double z95 = 1.959963984540054;
@@ -123,7 +131,10 @@ inline void write_csv(std::ostream &out, const Config &config, const std::vector
             << ',' << e.price + z95 * e.standard_error << ',' << row.benchmark << ','
             << std::abs(e.price - row.benchmark) << ',' << row.runtime_ms << ','
             << row.control_beta << ',' << row.importance_shift << ',' << config.boundary_ratio
-            << ',' << row.exercise_fraction << ',' << row.reference_steps << '\n';
+            << ',' << row.exercise_fraction << ',' << row.reference_steps << ','
+            << row.newton_iterations << ',' << row.newton_gradient << ','
+            << row.newton_log_second_moment_initial << ',' << row.newton_log_second_moment_final
+            << ',' << row.newton_status << '\n';
     }
 }
 
@@ -140,11 +151,12 @@ inline int run_experiment(int argc, char **argv, const std::string &description,
                 "--maturity X          years; default 1\n"
                 "--steps N             tree steps / MC exercise intervals; default 50\n"
                 "--paths N             evaluation paths; default 100000\n"
-                "--train-paths N       LSM training / control pilot; default 50000\n"
+                "--train-paths N       LSM training / control and IS pilots; default 50000\n"
                 "--reference-steps N   American CRR reference resolution; default 2000\n"
                 "--boundary-ratio X    fixed-rule MC: put <= X*K, call >= X*K; default 0.85\n"
                 "--seed N              master random seed; default 42\n"
                 "--output PATH         CSV destination; default stdout\n"
+                "--newton-trace PATH   variance_reduction only: Newton iteration CSV\n"
                 "Method-specific use of these shared options is documented in README.md.\n";
             return 0;
         }

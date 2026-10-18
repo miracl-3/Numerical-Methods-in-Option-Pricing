@@ -6,6 +6,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter
 import numpy as np
 import pandas as pd
 
@@ -13,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 COLORS = {"plain_mc": "#263b57", "antithetic": "#00857d", "control_variate": "#c16a2b",
           "importance_sampling": "#8061a3"}
 LABELS = {"plain_mc": "Plain MC", "antithetic": "Antithetic",
-          "control_variate": "Control variate", "importance_sampling": "Importance sampling"}
+          "control_variate": "Control variate", "importance_sampling": "IS (Newton pilot)"}
 
 
 def style():
@@ -22,14 +23,26 @@ def style():
         "axes.labelcolor": "#263b57", "text.color": "#263b57", "axes.spines.top": False,
         "axes.spines.right": False, "axes.grid": True, "grid.alpha": 0.18,
         "legend.frameon": False, "figure.facecolor": "white", "savefig.facecolor": "white",
+        "svg.hashsalt": "option-pricing",
     })
 
 
 def save(figure, output_dir, name):
     figure.savefig(output_dir / f"{name}.png", dpi=180)
-    figure.savefig(output_dir / f"{name}.svg")
+    svg_path = output_dir / f"{name}.svg"
+    figure.savefig(svg_path, metadata={"Date": None})
+    # Matplotlib emits spaces at the ends of SVG path lines; keep generated diffs clean.
+    svg_path.write_text("\n".join(line.rstrip() for line in svg_path.read_text(
+        encoding="utf-8").splitlines()) + "\n", encoding="utf-8")
     plt.close(figure)
     print(f"Saved {name}.png and .svg")
+
+
+def log_ticks(axis, values):
+    axis.xaxis.set_major_locator(FixedLocator(values))
+    axis.xaxis.set_major_formatter(FuncFormatter(
+        lambda value, position: f"{value / 1000:g}k" if value >= 1000 else f"{value:g}"))
+    axis.xaxis.set_minor_formatter(NullFormatter())
 
 
 def convergence(data_dir, output_dir):
@@ -46,6 +59,7 @@ def convergence(data_dir, output_dir):
         ax.axhline(frame.benchmark.iloc[0], color=color, ls="--", lw=1)
     ax.set(title="CRR backward induction", xlabel="Tree steps (log scale)", ylabel="Option value")
     ax.legend(loc="best")
+    log_ticks(ax, [25, 50, 100, 200, 400, 800])
     ax.text(0.98, 0.04, "Dashed: Black-Scholes / 2,000-step CRR",
             ha="right", transform=ax.transAxes, fontsize=8)
 
@@ -57,6 +71,7 @@ def convergence(data_dir, output_dir):
     ax.axhline(frame.benchmark.iloc[0], color="#263b57", ls="--", label="Black-Scholes")
     ax.set(title="Sampling uncertainty shrinks with paths", xlabel="Evaluation paths", ylabel="European put value")
     ax.legend(fontsize=8)
+    log_ticks(ax, sorted(mc.paths.unique()))
 
     ax = axes[1, 0]
     for kind, color in [("call", "#263b57"), ("put", "#00857d")]:
@@ -71,9 +86,11 @@ def convergence(data_dir, output_dir):
     ax.set(title=f"Error across {mc.seed.nunique()} independent seeds",
            xlabel="Evaluation paths", ylabel="Root mean squared error")
     ax.legend(fontsize=8)
+    log_ticks(ax, counts)
 
     ax = axes[1, 1]
-    for method, label, color in [("monte_carlo_american_fixed_policy", "Fixed rule (0.85 K)", "#c16a2b"),
+    fixed_ratio = american[american.method == "monte_carlo_american_fixed_policy"].boundary_ratio.iloc[0]
+    for method, label, color in [("monte_carlo_american_fixed_policy", f"Fixed rule ({fixed_ratio:g} K)", "#c16a2b"),
                                   ("lsm_american", "LSM, independent test paths", "#00857d")]:
         frame = american[(american.method == method) & (american.seed == 42)].sort_values("paths")
         ax.errorbar(frame.paths, frame.price, yerr=1.959963984540054 * frame.standard_error,
@@ -84,13 +101,14 @@ def convergence(data_dir, output_dir):
     ax.set(xscale="log", title="More paths do not remove policy bias", xlabel="Independent evaluation paths",
            ylabel="American put policy value")
     ax.legend(fontsize=8)
+    log_ticks(ax, sorted(american.paths.unique()))
     save(fig, output_dir, "convergence")
 
 
 def variance_reduction(data_dir, output_dir):
     data = pd.read_csv(data_dir / "variance_reduction.csv")
     fig, axes = plt.subplots(2, 2, figsize=(13, 9), layout="constrained")
-    fig.suptitle("European Monte Carlo: three variance reduction techniques", fontsize=18, weight="bold")
+    fig.suptitle("European variance reduction with Newton-tuned importance sampling", fontsize=17, weight="bold")
     for ax, kind in zip(axes[0], ["call", "put"]):
         for method in COLORS:
             frame = data[(data.option_type == kind) & (data.method == method)]
@@ -99,6 +117,7 @@ def variance_reduction(data_dir, output_dir):
         ax.set(title=f"European {kind}: median standard error", xlabel="Terminal payoff evaluations (pilot included)",
                ylabel="Estimated standard error")
         ax.legend(fontsize=8)
+        log_ticks(ax, sorted(data.paths.unique()))
 
     largest = data[data.paths == data.paths.max()]
     for ax, adjusted in zip(axes[1], [False, True]):
@@ -116,12 +135,40 @@ def variance_reduction(data_dir, output_dir):
             bars = ax.bar(positions, factors, width=0.34, color=color, label=kind.title())
             ax.bar_label(bars, fmt="%.2fx", padding=3, fontsize=8)
         ax.axhline(1, color="#888888", ls="--", lw=1)
-        ax.set_xticks(np.arange(3), ["Antithetic", "Control variate", "Importance sampling"])
+        ax.set_xticks(np.arange(3), ["Antithetic", "Control variate", "IS (Newton pilot)"])
         ax.set(title="Work-adjusted variance factor" if adjusted else "Estimator variance reduction factor",
                ylabel="Factor relative to plain MC (higher is better)")
         ax.margins(y=0.22)
         ax.legend(fontsize=8)
     save(fig, output_dir, "variance_reduction")
+
+
+def newton_convergence(data_dir, output_dir):
+    data = pd.read_csv(data_dir / "newton_convergence.csv")
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.8), layout="constrained")
+    fig.suptitle("Importance sampling: independent-pilot Newton optimization", fontsize=18, weight="bold")
+    colors = {"call": "#8061a3", "put": "#00857d"}
+    seeds = sorted(data.seed.unique())
+    for (kind, seed), frame in data.groupby(["option_type", "seed"]):
+        frame = frame.sort_values("iteration")
+        alpha = 0.45 + 0.5 * seeds.index(seed) / max(1, len(seeds) - 1)
+        options = dict(color=colors[kind], alpha=alpha, marker="o", markersize=4)
+        axes[0].plot(frame.iteration, frame["shift"], label=f"{kind.title()}, seed {seed}", **options)
+        relative_moment = np.exp(frame.log_second_moment - frame.log_second_moment.iloc[0])
+        axes[1].plot(frame.iteration, relative_moment, **options)
+        residual = np.maximum(np.abs(frame.gradient) / (1 + np.abs(frame["shift"])), 1e-16)
+        axes[2].semilogy(frame.iteration, residual, **options)
+    axes[0].set(title="Shift learned from the pilot", xlabel="Newton iteration", ylabel="Gaussian proposal mean")
+    axes[0].legend(fontsize=7, ncols=2)
+    axes[1].set(title="Pilot second moment decreases", xlabel="Newton iteration",
+                ylabel=r"$\widehat M(\mu_k) / \widehat M(0)$")
+    axes[2].axhline(1e-10, color="#263b57", ls="--", lw=1, label="Stopping tolerance")
+    axes[2].set(title="First-order convergence check", xlabel="Newton iteration",
+                ylabel=r"$|\nabla \log\widehat M|\, /\, (1+|\mu|)$")
+    axes[2].legend(fontsize=8)
+    for axis in axes:
+        axis.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+    save(fig, output_dir, "newton_convergence")
 
 
 def exercise_grid(data_dir, output_dir):
@@ -165,7 +212,7 @@ def binomial_diagram(output_dir):
                           "ec": "#00857d" if time == steps else "#b2c4d1"}, zorder=2)
     ax.set(xlim=(-0.4, 4.5), ylim=(-4.7, 4.7))
     ax.axis("off")
-    fig.suptitle("A recombining CRR tree: simulation is replaced by backward induction", fontsize=17, weight="bold")
+    fig.suptitle("A recombining CRR tree: stock states and terminal put payoffs", fontsize=17, weight="bold")
     ax.text(0, 4.5, f"Four intervals | u = {up:.4f} | d = {down:.4f} | risk-neutral p = {probability:.4f}", fontsize=10)
     ax.text(0, -4.5, "European: discounted expected continuation.  American: max(exercise, continuation).", fontsize=10)
     save(fig, output_dir, "binomial_tree")
@@ -177,6 +224,7 @@ def create_figures(data_dir=ROOT / "data" / "experiments", output_dir=ROOT / "fi
     style()
     convergence(data_dir, output_dir)
     variance_reduction(data_dir, output_dir)
+    newton_convergence(data_dir, output_dir)
     exercise_grid(data_dir, output_dir)
     binomial_diagram(output_dir)
 
