@@ -191,6 +191,42 @@ one trained policy and quantify evaluation sampling uncertainty only. Repeated
 training/evaluation seeds expose additional variability, but do not create a
 certified upper/lower confidence bracket for the true American price.
 
+### Longstaff–Schwartz (2001) American-put experiment
+
+The optional `--lsm-mode paper` reproduces the setup of Table 1 in Longstaff
+and Schwartz (2001), separately from the default independent train/evaluation
+mode. Their put has strike 40, continuously compounded rate 6%, no dividends,
+and 50 exercise dates per year. The 20 cases combine initial prices
+36, 38, 40, 42, and 44; volatilities 20% and 40%; and maturities of one and
+two years. The full table uses 100,000 paths (50,000 antithetic pairs), so the
+two maturities use 50 and 100 total exercise intervals, respectively.
+
+At each date the regression uses in-the-money paths and a constant plus the
+paper's first three weighted Laguerre functions of the normalized stock
+$x=S/K$:
+
+$$L_0(x)=e^{-x/2},\quad
+L_1(x)=e^{-x/2}(1-x),\quad
+L_2(x)=e^{-x/2}(1-2x+x^2/2).$$
+
+The fitted rule is valued on the same antithetic paths, as in the paper's
+Table 1 experiment. Standard errors are calculated from the 50,000 pair
+averages; they do not represent an independent evaluation of the fitted
+policy or account for all policy-fitting uncertainty. This in-sample estimator
+is intentionally distinct from the independently evaluated LSM implementation
+and must not be used as the plain baseline in future AV-LSM/CV-LSM/IS-LSM
+comparisons. The paper itself uses antithetic sampling; those later comparisons
+should use a separate plain-LSM control so variance-reduction effects are
+interpretable.
+
+Run `python scripts/run_lsm_paper.py` after building to create the full
+20-case table and a sample-size convergence dataset for the at-the-money
+one-year case. `python scripts/plot_lsm_paper.py` creates the parameter-grid
+and convergence figures. The comparison line is a 2,000-step Bermudan CRR
+tree aligned with the paper's exercise grid, not the paper's finite-difference
+benchmark; the manifest records this distinction. `--quick` creates a smaller
+smoke-test dataset.
+
 ## Reproducibility and accounting
 
 The master seed is recorded in every row. SplitMix64 derives separate seed

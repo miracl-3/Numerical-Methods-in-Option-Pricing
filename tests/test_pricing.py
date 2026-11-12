@@ -206,6 +206,26 @@ class PricingTests(unittest.TestCase):
         self.assertLess(abs(float(row["price"]) - float(row["benchmark"])), tolerance)
         self.assertGreater(float(row["price"]), 5.573526022256971)
 
+    def test_paper_lsm_uses_antithetic_laguerre_in_sample_mode(self):
+        row = self.price("lsm_american", lsm_mode="paper", type="put", spot=40, strike=40,
+                         rate=0.06, volatility=0.2, maturity=1, steps=50,
+                         paths=10000, train_paths=5000)[0]
+        self.assertEqual(int(row["paths"]), 10000)
+        self.assertEqual(int(row["training_paths"]), 10000)
+        self.assertEqual(int(row["independent_samples"]), 5000)
+        self.assertEqual(int(row["payoff_evaluations"]), 10000)
+        self.assertLess(abs(float(row["price"]) - 2.313), 6 * float(row["standard_error"]) + 0.06)
+        continuous = self.price("binomial_american", spot=40, strike=40, rate=0.06,
+                                volatility=0.2, maturity=1, steps=1000)[0]
+        self.assertLess(float(row["benchmark"]), float(continuous["price"]))
+
+    def test_paper_lsm_requires_even_antithetic_path_count(self):
+        result = subprocess.run([str(executable("lsm_american", BUILD_DIR)),
+                                 "--lsm-mode", "paper", "--paths", "101"],
+                                capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("even --paths", result.stderr)
+
     def test_lsm_deep_itm_exercises_at_zero(self):
         row = self.price("lsm_american", spot=40, paths=1000, train_paths=1000, steps=20)[0]
         self.assertAlmostEqual(float(row["price"]), 60.0, places=10)

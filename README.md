@@ -37,7 +37,7 @@ numerical reference. The emphasis is numerical behavior and reproducibility.
 | [`monte_carlo_european.cpp`](src/monte_carlo_european.cpp) | Exact-terminal GBM simulation and uncertainty estimates | Black-Scholes |
 | [`monte_carlo_american.cpp`](src/monte_carlo_american.cpp) | Simulation of a prescribed exercise policy | Fine CRR tree |
 | [`variance_reduction.cpp`](src/variance_reduction.cpp) | Plain European MC, antithetic/control variates, and basic Newton importance sampling | Black-Scholes |
-| [`lsm_american.cpp`](src/lsm_american.cpp) | Longstaff–Schwartz policy training and independent valuation | Fine CRR tree |
+| [`lsm_american.cpp`](src/lsm_american.cpp) | Longstaff–Schwartz with independent train/test by default; optional paper-reproduction mode | Fine CRR / Bermudan CRR |
 
 Shared headers in `include/` hold the contract model, CRR implementation,
 stable statistics, and experiment interface. Each source file builds as a
@@ -45,10 +45,12 @@ separate executable; there is no seventh C++ driver or test source.
 
 **American Monte Carlo requires an exercise policy.** The baseline uses a
 transparent fixed boundary; its expected payoff is a lower bound on the optimal
-American price. LSM learns continuation values through regression. More paths
-alone cannot remove policy bias. For a non-dividend-paying call with a
-nonnegative interest rate, both American simulation programs use the optimal
-policy of holding to maturity.
+American price. LSM learns continuation values through regression. Its default
+mode trains and evaluates on independent paths; an explicit paper mode
+reproduces the Longstaff–Schwartz Table 1 American-put setup. More paths alone
+cannot remove policy bias. For a non-dividend-paying call with a nonnegative
+interest rate, both American simulation programs use the optimal policy of
+holding to maturity.
 
 ## Reproduce the study
 
@@ -91,6 +93,25 @@ figures under `figures/`. A build manifest records compiler details and source
 hashes. The checked-in example results use the quick profile. The illustrated
 American baseline deliberately uses a suboptimal `0.75 K` boundary to make
 policy bias visible; the executable's configurable default remains `0.85 K`.
+
+To reproduce the paper's 20-case American-put parameter grid, then create
+report figures for its LSM estimates and sample-size convergence, run:
+
+```text
+python scripts/run_lsm_paper.py
+python scripts/plot_lsm_paper.py
+```
+
+This uses `K=40`, `r=0.06`, `S0` in 36–44, volatility 0.20 or 0.40, maturities
+1 or 2 years, and 50 exercise dates per year. Each Table 1 case uses 100,000
+paths arranged as 50,000 antithetic pairs and the paper's constant plus
+weighted `L0`, `L1`, and `L2` Laguerre regressors. The paper-mode result is
+in-sample; it is separate from the independent train/test LSM default and is
+not the plain-Monte-Carlo baseline for the planned AV/CV/IS comparisons.
+`--quick` runs a smaller smoke profile. Results and figures are written to
+`data/experiments/` and `figures/`; the generated reference is a 2,000-step
+Bermudan CRR tree aligned with the exercise dates, not the paper's
+finite-difference reference.
 
 ### CMake alternative, including MSVC
 
@@ -200,10 +221,12 @@ read-only review; rerunning the C++ exploration cell requires a local build.
 | [Newton convergence](figures/newton_convergence.png) | Fitted shifts, pilot second-moment reduction, and gradient convergence |
 | [LSM exercise grid](figures/lsm_exercise_grid.png) | Sensitivity to exercise-date resolution and variability across training/evaluation seeds |
 | [CRR teaching diagram](figures/binomial_tree.png) | Recombination, terminal payoffs, and the backward-induction decision |
+| [Paper LSM convergence](figures/lsm_paper_convergence.png) | Value and RMSE paths as the antithetic sample grows |
+| [Paper LSM parameter grid](figures/lsm_paper_table.png) | Paper-mode LSM estimates across all 20 contract cases |
 
 ## Validation and interpretation
 
-The 27-test numerical suite checks known Black-Scholes prices, put-call parity at
+The 29-test numerical suite checks known Black-Scholes prices, put-call parity at
 multiple maturities, tree convergence, American put bounds, non-dividend call
 exercise behavior, scale homogeneity, Monte Carlo accuracy, variance accounting,
 importance-sampling likelihood weights, Newton convergence and independently

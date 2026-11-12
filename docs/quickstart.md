@@ -52,6 +52,8 @@ it does not launch `monte_carlo_european.exe`.
 | `scripts/run_experiments.py` | Calls those executables with different resolutions, path counts, and seeds; saves CSV datasets |
 | `scripts/plot_results.py` | Reads the datasets and produces five figures, including Newton convergence |
 | `scripts/verify_notebook.py` | Executes the notebook and saves its outputs |
+| `scripts/run_lsm_paper.py` | Reproduces the 20 paper Table 1 put cases and a sample-size convergence study |
+| `scripts/plot_lsm_paper.py` | Plots the paper-mode parameter grid and LSM path convergence |
 | `tests/test_pricing.py` | Runs numerical and input-validation checks against the compiled programs |
 | `docs/methodology.md` | Explains the mathematics and interpretation of the results |
 
@@ -106,6 +108,19 @@ These print CSV. To show the main fields as a readable PowerShell table:
 
 Use `--help` on any executable for its options. Append
 `--output data/custom/my_result.csv` to save a result to a file.
+
+The existing independently trained/evaluated LSM remains the default. To run
+its paper-reproduction mode for the canonical Table 1 case, use:
+
+```powershell
+.\build\lsm_american.exe --lsm-mode paper --type put --spot 40 --strike 40 `
+    --rate 0.06 --volatility 0.20 --maturity 1 --steps 50 --paths 100000
+```
+
+Paper mode uses antithetic pairs, the constant plus weighted `L0`, `L1`, and
+`L2` Laguerre basis, and in-sample policy valuation. Run the 20-case table and
+the 1-year at-the-money sample-size study with `scripts/run_lsm_paper.py`,
+followed by `scripts/plot_lsm_paper.py`. `--quick` is for smoke testing only.
 
 ## What to change, and when to rerun
 

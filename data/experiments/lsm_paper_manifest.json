@@ -1,0 +1,76 @@
+{
+  "paper": "Longstaff and Schwartz (2001), Table 1, American put experiment",
+  "profile": "paper",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "python": "3.12.13",
+  "contract_cases": {
+    "strike": 40.0,
+    "rate": 0.06,
+    "spots": [
+      36,
+      38,
+      40,
+      42,
+      44
+    ],
+    "volatilities": [
+      0.2,
+      0.4
+    ],
+    "maturities": [
+      1,
+      2
+    ],
+    "exercise_dates_per_year": 50
+  },
+  "estimator": {
+    "table_paths": 100000,
+    "table_seed": 42,
+    "sampling": "paired Z and -Z shocks; standard errors use antithetic pair averages",
+    "regressors": "constant plus weighted Laguerre L0, L1, and L2 of spot/strike",
+    "valuation": "in-sample stopping-policy fit and valuation, as in Table 1"
+  },
+  "convergence_case": {
+    "spot": 40.0,
+    "volatility": 0.2,
+    "maturity": 1
+  },
+  "convergence_paths": [
+    5000,
+    10000,
+    25000,
+    50000,
+    100000
+  ],
+  "convergence_seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "reference": "2000-step Bermudan CRR tree aligned to the 50-per-year exercise grid; not the paper's finite-difference reference",
+  "notes": [
+    "Each maturity uses 50 exercise dates per year (50 or 100 total dates).",
+    "Antithetic pair averages are the independent observations for standard errors.",
+    "In-sample standard errors do not measure independent policy-evaluation uncertainty.",
+    "In-sample estimates reproduce the paper protocol, not the independent-evaluation baseline.",
+    "The paper's 100,000-path Table 1 uses 50,000 antithetic pairs."
+  ],
+  "build": {
+    "compiler": "g++.EXE (Rev5, Built by MSYS2 project) 16.1.0",
+    "cpp_standard": "c++17",
+    "optimization": "-O2",
+    "source_sha256": {
+      "src/binomial_american.cpp": "3b80aa0d4990767396d57cd1b117427467fe7c1f03971def5cf0a1ebade47d7e",
+      "src/binomial_european.cpp": "746a7b561e553f0fe23d214fe247b79fc0f9497cbb1001026da8af6ab50eef4f",
+      "src/lsm_american.cpp": "4ff5b2b5b5edb5be049ce4ffaa3182974fad58285ce5baeb1245043966b231d8",
+      "src/monte_carlo_american.cpp": "75bca555d60932cee7746d6be66f777cb6f91cba6854c1da482cd385bb2ae7b0",
+      "src/monte_carlo_european.cpp": "13170c38f266a554d004a0c6cbd92c06b07fa3b4ed5766f59b9d3d276e651490",
+      "src/variance_reduction.cpp": "b0d7805d8b8a3d6aa68d37c9cc39fed5e542bccfa7f9f18170de7a1138f571cf",
+      "include/binomial.hpp": "01dd2ac3b513b38d1ee2eaf1ce8b8349fff22236051350bb1d61486e791bd028",
+      "include/experiment.hpp": "9a7d301198491d53742a607d751fb5231210d30d61720309cbfe90cf28d3bf95",
+      "include/model.hpp": "27e6e0b1cc251dbe000c9cf39ab7544013df6a038f765cc0103e4b14bcc01d1e"
+    }
+  }
+}

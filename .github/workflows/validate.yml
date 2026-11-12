@@ -29,4 +29,6 @@ jobs:
       - run: python scripts/build.py
       - run: python scripts/run_experiments.py --quick
       - run: python scripts/plot_results.py
+      - run: python scripts/run_lsm_paper.py --quick
+      - run: python scripts/plot_lsm_paper.py
       - run: python scripts/verify_notebook.py

@@ -21,6 +21,7 @@ struct Config {
     std::size_t reference_steps = 2000;
     std::uint64_t seed = 42;
     double boundary_ratio = 0.85;
+    std::string lsm_mode = "independent";
     std::string output;
     std::string newton_trace;
 };
@@ -61,6 +62,7 @@ inline Config parse_config(int argc, char **argv) {
         else if (name == "--reference-steps") config.reference_steps = integer(value, name);
         else if (name == "--seed") config.seed = integer(value, name);
         else if (name == "--boundary-ratio") config.boundary_ratio = real(value, name);
+        else if (name == "--lsm-mode") config.lsm_mode = value;
         else if (name == "--output") config.output = value;
         else if (name == "--newton-trace") config.newton_trace = value;
         else if (name == "--type") {
@@ -78,6 +80,10 @@ inline Config parse_config(int argc, char **argv) {
         throw std::invalid_argument("Paths must be in [4, 10000000]; training paths in [4, 5000000].");
     if (config.boundary_ratio <= 0.0)
         throw std::invalid_argument("Boundary ratio must be positive.");
+    if (config.lsm_mode != "independent" && config.lsm_mode != "paper")
+        throw std::invalid_argument("--lsm-mode must be independent or paper.");
+    if (config.lsm_mode == "paper" && config.paths % 2 != 0)
+        throw std::invalid_argument("Paper LSM requires an even --paths count for antithetic pairs.");
     return config;
 }
 
@@ -155,6 +161,7 @@ inline int run_experiment(int argc, char **argv, const std::string &description,
                 "--reference-steps N   American CRR reference resolution; default 2000\n"
                 "--boundary-ratio X    fixed-rule MC: put <= X*K, call >= X*K; default 0.85\n"
                 "--seed N              master random seed; default 42\n"
+                "--lsm-mode MODE       lsm_american only: independent (default) or paper\n"
                 "--output PATH         CSV destination; default stdout\n"
                 "--newton-trace PATH   variance_reduction only: Newton iteration CSV\n"
                 "Method-specific use of these shared options is documented in README.md.\n";
