@@ -1,104 +1,115 @@
-# How the project works
+# Run the C++ to CSV to Python workflow
 
-The six C++ files are **six independent programs**. Each one prices a contract
-with a different method. They are compiled separately and can run in any order.
-Every program supports both `--type call` and `--type put`.
-
-Python automates repeated runs and makes charts from the C++ results.
+C++ performs the numerical work: stock-path generation, regression, cashflow
+decisions, CRR backward induction, prices, standard errors, and CSV export.
+Python compiles and launches the programs, collects their rows, and visualizes
+the exported results.
 
 ```text
 src/*.cpp + include/*.hpp
-          |
-          | scripts/build.py compiles each program
-          v
-build/*.exe
-          |
-          | scripts/run_experiments.py runs different settings and seeds
-          v
-data/experiments/*.csv
-          |
-          | scripts/plot_results.py draws charts
-          v
-figures/*.png and *.svg
-
-notebooks/option_pricing.ipynb reads the CSVs and figures,
-explains the results, and can call an executable for a custom contract.
+            |
+            | scripts/build.py
+            v
+      build executables
+            |
+            | scripts/run_lsm_paper.py
+            v
+  data/experiments/lsm_paper_*.csv
+            |
+            | scripts/plot_lsm_paper.py
+            v
+     figures/*.png and *.svg
 ```
 
-## The six programs
+## Set up and run
 
-| C++ file | What it does | How it relates to the others |
-|---|---|---|
-| `binomial_european.cpp` | European pricing by CRR backward induction | Compare with European MC and Black-Scholes |
-| `binomial_american.cpp` | CRR backward induction with early exercise | A fine tree provides the numerical reference for both American simulation programs |
-| `monte_carlo_european.cpp` | European pricing by exact terminal-stock simulation | Baseline for the variance reduction study |
-| `monte_carlo_american.cpp` | Simulates a prescribed exercise rule | Simple American baseline; its expected policy value is a lower bound |
-| `variance_reduction.cpp` | Runs plain European MC, antithetic/control variates, and basic Newton importance sampling | Fits control and IS parameters on independent pilots, then compares sampling errors |
-| `lsm_american.cpp` | Learns an exercise rule, then values it on independent paths | More flexible American simulation method; compare with the fixed rule and American tree |
-
-The American simulation programs calculate their tree references by calling
-shared C++ functions. They do not launch `binomial_american.exe`.
-Similarly, the variance reduction program contains its own plain-MC estimator;
-it does not launch `monte_carlo_european.exe`.
-
-## The supporting files
-
-| File | Role |
-|---|---|
-| `include/model.hpp` | Shared contract parameters, call/put payoffs, Black-Scholes, random streams, GBM paths, and sample statistics |
-| `include/binomial.hpp` | Shared CRR tree algorithm, including American numerical references |
-| `include/experiment.hpp` | Reads command-line parameters, measures runtime, and writes consistent CSV output |
-| `scripts/build.py` | Compiles the six programs into `build/` |
-| `scripts/run_experiments.py` | Calls those executables with different resolutions, path counts, and seeds; saves CSV datasets |
-| `scripts/plot_results.py` | Reads the datasets and produces five figures, including Newton convergence |
-| `scripts/verify_notebook.py` | Executes the notebook and saves its outputs |
-| `scripts/run_lsm_paper.py` | Reproduces the 20 paper Table 1 put cases and a sample-size convergence study |
-| `scripts/plot_lsm_paper.py` | Plots the paper-mode parameter grid and LSM path convergence |
-| `tests/test_pricing.py` | Runs numerical and input-validation checks against the compiled programs |
-| `docs/methodology.md` | Explains the mathematics and interpretation of the results |
-
-Headers (`.hpp`) are included when compiling. They are not programs to run.
-Black-Scholes lives in the shared model header, so it does not need a seventh
-C++ source file. Each `.cpp` has its own `main()`; compile each separately.
-
-## Run the complete workflow in this Windows workspace
-
-The project environment and example results have already been created. Open
-PowerShell and run:
+Use Python 3.10+ and a C++17 compiler. In this Windows workspace:
 
 ```powershell
 Set-Location "D:\Projects\Capstone Thesis"
-$pricingPython = ".\.venv-portfolio\Scripts\python.exe"
-
-# 1. Build the six C++ programs.
+python -m venv .venv
+$pricingPython = ".\.venv\Scripts\python.exe"
+& $pricingPython -m pip install -r requirements.txt
 & $pricingPython scripts/build.py
-
-# 2. Run the quick convergence and comparison experiments.
-& $pricingPython scripts/run_experiments.py --quick
-
-# 3. Generate the figures from those experiment results.
-& $pricingPython scripts/plot_results.py
+& $pricingPython tests/test_pricing.py -v
+& $pricingPython tests/test_lsm_procedure.py -v
+& $pricingPython scripts/run_lsm_paper.py
+& $pricingPython scripts/plot_lsm_paper.py
 ```
 
-Read the generated PNGs in `figures/`, or open
-`notebooks/option_pricing.ipynb` in VS Code and select the
-`.venv-portfolio` Python interpreter. The notebook has saved outputs for review.
-For a fresh clone or another computer, follow the environment setup in the README.
+Reuse an existing environment instead of creating it again. The build script
+finds GCC or Clang; pass `--compiler PATH` when the compiler is not on `PATH`.
+For MSVC, use the CMake commands in the README and pass the resulting executable
+directory as `--build-dir` to the runners and tests.
 
-## Run just one pricing method
+The full paper run uses 100,000 paths for each of 20 contracts and 100,000-step
+CRR references. The latter are expensive: 100,000 steps mean 100,001 terminal
+nodes and 5,000,150,001 total tree nodes. C++ computes American CRR reference
+values at every tree date and with matched exercise dates, then reuses them
+for repeated runs.
+The runner defaults to two worker processes.
 
-After building, choose any of these commands:
+For a short installation check, save separate outputs:
 
 ```powershell
-.\build\binomial_european.exe --type put --steps 500
-.\build\binomial_american.exe --type put --steps 500
-.\build\monte_carlo_european.exe --type put --paths 100000
-.\build\monte_carlo_american.exe --type put --paths 100000 --steps 50
-.\build\variance_reduction.exe --type put --paths 100000 --train-paths 5000
-.\build\lsm_american.exe --type put --train-paths 50000 --paths 100000 --steps 50
+& $pricingPython scripts/run_lsm_paper.py --quick --output-dir data/custom/lsm_smoke
 ```
 
-These print CSV. To show the main fields as a readable PowerShell table:
+`--quick` uses 10,000 table paths and 2,000 reference steps, with a smaller
+convergence study. Run the default profile to use the paper's 100,000-path
+budget. `--replicates 30` controls the convergence seeds; the default study
+uses seeds 42-71 at five path budgets. `--reference-steps` changes tree
+resolution, and `--workers` changes concurrency.
+
+## Read the results
+
+Open the generated `figures/lsm_paper_table.png`,
+`figures/lsm_paper_convergence.png`, and
+`figures/lsm_paper_standard_errors.png`.
+The [benchmark findings](lsm_benchmark.md) explain the measured comparisons.
+The underlying CSVs and JSON summaries are under `data/experiments/`.
+
+The table compares our LSM prices against both the published simulation and
+published finite difference values. It also reports American CRR values at
+every tree date and with the same exercise dates as LSM. These references help
+separate exercise-date effects from simulation and policy errors.
+
+Standard-error comparisons distinguish antithetic pair-based uncertainty,
+the marginal path-level diagnostic, and the empirical dispersion across
+independently seeded complete LSM runs. See [the methodology](methodology.md)
+for formulas and limitations.
+
+## The six programs
+
+| Source | Calculation |
+|---|---|
+| `binomial_european.cpp` | European CRR value |
+| `binomial_american.cpp` | CRR value with early exercise |
+| `monte_carlo_european.cpp` | European exact-terminal Monte Carlo |
+| `monte_carlo_american.cpp` | American prescribed-policy Monte Carlo |
+| `variance_reduction.cpp` | Plain European MC, antithetic/control variates, and importance sampling |
+| `lsm_american.cpp` | Longstaff-Schwartz exercise-policy regression and valuation |
+
+Each file builds as its own executable. Shared numerical functions live in
+`include/`; programs call them directly. The executables do not launch one
+another. The standard LSM executable trains and evaluates on independent paths
+by default. The paper runner selects `--lsm-mode paper` for the original
+in-sample Table 1 procedure.
+
+Run a single paper-mode contract after building:
+
+```powershell
+.\build\lsm_american.exe --lsm-mode paper --type put --spot 40 --strike 40 `
+    --rate 0.06 --volatility 0.20 --maturity 1 --steps 50 --paths 100000 `
+    --reference-steps 100000 --output data/custom/lsm.csv
+```
+
+Paper mode uses 50,000 antithetic pairs and a constant plus three weighted
+Laguerre functions of `S/K`. The same paths fit and value the stopping rule.
+For the independent mode, omit `--lsm-mode paper` and set `--train-paths`
+separately from `--paths`.
+
+Any executable can print a row for inspection:
 
 ```powershell
 .\build\monte_carlo_european.exe --type put --paths 100000 |
@@ -106,52 +117,30 @@ These print CSV. To show the main fields as a readable PowerShell table:
     Format-Table method, price, standard_error, benchmark
 ```
 
-Use `--help` on any executable for its options. Append
-`--output data/custom/my_result.csv` to save a result to a file.
+Use `--help` for all accepted parameters. Changing command-line values does
+not require compilation; editing C++ sources or headers does.
 
-The existing independently trained/evaluated LSM remains the default. To run
-its paper-reproduction mode for the canonical Table 1 case, use:
+## Supporting files and other experiments
 
-```powershell
-.\build\lsm_american.exe --lsm-mode paper --type put --spot 40 --strike 40 `
-    --rate 0.06 --volatility 0.20 --maturity 1 --steps 50 --paths 100000
-```
+| File | Role |
+|---|---|
+| `include/model.hpp` | Contracts, payoffs, Black-Scholes, GBM paths, random streams, statistics |
+| `include/binomial.hpp` | Shared CRR calculation |
+| `include/experiment.hpp` | Command-line parameters, runtime accounting, CSV fields |
+| `scripts/build.py` | Compilation and build metadata |
+| `scripts/run_lsm_paper.py` | Table 1 reproduction, reference reuse, and repeated-seed convergence |
+| `scripts/plot_lsm_paper.py` | Figures from exported LSM CSVs |
+| `data/reference/` | Visually verified published Table 1 values and source record |
+| `tests/test_pricing.py` | Numerical and input-validation checks |
 
-Paper mode uses antithetic pairs, the constant plus weighted `L0`, `L1`, and
-`L2` Laguerre basis, and in-sample policy valuation. Run the 20-case table and
-the 1-year at-the-money sample-size study with `scripts/run_lsm_paper.py`,
-followed by `scripts/plot_lsm_paper.py`. `--quick` is for smoke testing only.
-
-## What to change, and when to rerun
-
-- **Change the contract:** use `--spot`, `--strike`, `--rate`, `--volatility`,
-  `--maturity`, and `--type`. You can also edit the notebook's exploration cell.
-- **Refine a tree:** increase `--steps`.
-- **Increase the MC sample:** increase `--paths`.
-- **Increase LSM training data:** increase `--train-paths`.
-- **Increase control-variate or IS pilot data:** use `--train-paths` on `variance_reduction.exe`.
-- **Change the plot appearance:** edit `scripts/plot_results.py`.
-
-Changing command-line values does not require compilation. After editing C++
-or a shared header, rebuild. To update the full figures after a pricing change,
-run experiment collection again, then plotting. A single custom run does not
-replace the convergence datasets or automatically update the figures.
-
-To save the Newton iterations for importance sampling:
+The broader European/American comparison is still available:
 
 ```powershell
-.\build\variance_reduction.exe --type call --paths 100000 --train-paths 5000 --newton-trace data/custom/newton.csv
+& $pricingPython scripts/run_experiments.py --quick
+& $pricingPython scripts/plot_results.py
 ```
 
-The basic Newton updates give an approximate shift from the direct pilot
-second moment; the shift is then plugged into the pricing formula. It is learned independently of the evaluation paths. Both
-pilot-based methods include their additional payoff evaluations and fitting
-time. The saved `variance_summary.csv` gives the measured reductions; the
-`newton_convergence.csv` file and figure show how the optimizer converged.
-
-To run the numerical checks or refresh the notebook outputs:
-
-```powershell
-& $pricingPython tests/test_pricing.py -v
-& $pricingPython scripts/verify_notebook.py
-```
+For an importance-sampling Newton trace, append
+`--newton-trace data/custom/newton.csv` to a `variance_reduction` command.
+The separate historical implementation under `extensions/` is retained.
+Use the project's single `.venv` for the build, experiment, and plotting scripts.

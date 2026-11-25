@@ -271,8 +271,9 @@ class PricingTests(unittest.TestCase):
             first = self.price(method, paths=1000, train_paths=1000, steps=10)
             second = self.price(method, paths=1000, train_paths=1000, steps=10)
             for a, b in zip(first, second):
-                self.assertEqual({k: v for k, v in a.items() if k != "runtime_ms"},
-                                 {k: v for k, v in b.items() if k != "runtime_ms"})
+                timing_fields = {"runtime_ms", "reference_runtime_ms"}
+                self.assertEqual({k: v for k, v in a.items() if k not in timing_fields},
+                                 {k: v for k, v in b.items() if k not in timing_fields})
 
     def test_invalid_inputs_fail_cleanly(self):
         for method in METHODS:

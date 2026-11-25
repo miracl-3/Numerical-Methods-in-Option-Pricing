@@ -136,10 +136,14 @@ TrainingResult train_policy(const Config &config, const Paths &paths, bool lague
     if (c.type == OptionType::Call && c.rate >= 0.0) return result;
     const std::size_t path_count = paths.front().size();
     if (laguerre_basis) result.stopping_times.assign(path_count, config.steps);
+    // Section 8 (p. 143) normalizes stock levels and cashflows by the strike.
+    // Dollar-valued targets would give the same OLS stopping rule, but this
+    // scaling follows the published procedure and improves numerical scaling.
+    const double cashflow_scale = laguerre_basis ? c.strike : 1.0;
     const double discount = std::exp(-c.rate * c.maturity / static_cast<double>(config.steps));
     std::vector<double> cashflows(path_count);
     for (std::size_t path = 0; path < path_count; ++path)
-        cashflows[path] = c.payoff(paths.back()[path]);
+        cashflows[path] = c.payoff(paths.back()[path]) / cashflow_scale;
     for (std::size_t time = config.steps; --time > 0;) {
         std::vector<double> states;
         std::vector<double> targets;
@@ -157,7 +161,7 @@ TrainingResult train_policy(const Config &config, const Paths &paths, bool lague
         policy.models[time] = model;
         if (!model.valid) continue;
         for (std::size_t path = 0; path < path_count; ++path) {
-            const double exercise = c.payoff(paths[time][path]);
+            const double exercise = c.payoff(paths[time][path]) / cashflow_scale;
             if (exercise > 0.0 && exercise > model.continuation(paths[time][path] / c.strike)) {
                 cashflows[path] = exercise;
                 if (laguerre_basis) result.stopping_times[path] = time;
@@ -167,16 +171,13 @@ TrainingResult train_policy(const Config &config, const Paths &paths, bool lague
     // Time-zero choice uses training only. Taking max(intrinsic, test mean) would bias valuation.
     const double continuation = discount * std::accumulate(cashflows.begin(), cashflows.end(), 0.0) /
                                 static_cast<double>(path_count);
-    policy.exercise_at_zero = c.payoff(c.spot) > continuation;
+    // The paper uses dates 0 < t_1 < ... < t_K. Keep immediate exercise only
+    // for the independent-policy American mode, whose contract includes t=0.
+    policy.exercise_at_zero = !laguerre_basis && c.payoff(c.spot) > continuation;
     if (laguerre_basis) {
         result.discounted_cashflows.resize(path_count);
         for (std::size_t path = 0; path < path_count; ++path)
-            result.discounted_cashflows[path] = discount * cashflows[path];
-        if (policy.exercise_at_zero) {
-            std::fill(result.discounted_cashflows.begin(), result.discounted_cashflows.end(),
-                      c.payoff(c.spot));
-            std::fill(result.stopping_times.begin(), result.stopping_times.end(), 0);
-        }
+            result.discounted_cashflows[path] = cashflow_scale * discount * cashflows[path];
     }
     return result;
 }
@@ -213,19 +214,49 @@ Estimate evaluate_policy(const Config &config, const Policy &policy, double &exe
     return payoffs.estimate();
 }
 
-Estimate evaluate_in_sample_antithetic(const Config &config, const TrainingResult &training,
-                                       double &exercise_fraction) {
+Estimate evaluate_in_sample_antithetic(const Config &config, const Paths &paths,
+                                       const TrainingResult &training, Row &row) {
     Moments pair_payoffs;
+    Moments path_payoffs;
+    Moments pair_european;
+    Moments path_european;
+    Moments pair_premiums;
+    Moments path_premiums;
     std::size_t early_exercises = 0;
+    const double discount = std::exp(-config.contract.rate * config.contract.maturity);
     for (std::size_t pair = 0; pair < config.paths / 2; ++pair) {
         const std::size_t first = 2 * pair;
         const std::size_t second = first + 1;
-        pair_payoffs.add(0.5 * (training.discounted_cashflows[first] +
-                                training.discounted_cashflows[second]));
+        const double american_first = training.discounted_cashflows[first];
+        const double american_second = training.discounted_cashflows[second];
+        const double european_first = discount * config.contract.payoff(paths.back()[first]);
+        const double european_second = discount * config.contract.payoff(paths.back()[second]);
+        pair_payoffs.add(0.5 * (american_first + american_second));
+        pair_european.add(0.5 * (european_first + european_second));
+        pair_premiums.add(0.5 * (american_first - european_first +
+                                american_second - european_second));
+        path_payoffs.add(american_first);
+        path_payoffs.add(american_second);
+        path_european.add(european_first);
+        path_european.add(european_second);
+        path_premiums.add(american_first - european_first);
+        path_premiums.add(american_second - european_second);
         early_exercises += training.stopping_times[first] < config.steps;
         early_exercises += training.stopping_times[second] < config.steps;
     }
-    exercise_fraction = static_cast<double>(early_exercises) / static_cast<double>(config.paths);
+    row.exercise_fraction = static_cast<double>(early_exercises) / static_cast<double>(config.paths);
+    // The paper does not state its S.E. formula. Export SD(path payoffs)/sqrt(N)
+    // as a diagnostic for comparison, while using antithetic pair means for
+    // our primary plug-in S.E. Both condition on the shared in-sample fit.
+    row.naive_path_standard_error = path_payoffs.estimate().standard_error;
+    row.european_price = pair_european.mean;
+    row.european_standard_error = pair_european.estimate().standard_error;
+    row.european_naive_path_standard_error = path_european.estimate().standard_error;
+    // This diagnostic uses the same-path European MC payoff. The paper's
+    // reported early-exercise value instead subtracts analytical Black-Scholes.
+    row.early_exercise_premium = pair_premiums.mean;
+    row.early_exercise_premium_standard_error = pair_premiums.estimate().standard_error;
+    row.early_exercise_premium_naive_path_standard_error = path_premiums.estimate().standard_error;
     return pair_payoffs.estimate();
 }
 
@@ -251,13 +282,20 @@ int main(int argc, char **argv) {
             const std::size_t exercise_every = paper_mode
                 ? config.reference_steps / config.steps
                 : 1;
-            row.benchmark = binomial_price(config.contract, config.reference_steps, exercise_every);
+            row.benchmark = timed([&] {
+                const double matched_grid = binomial_price(
+                    config.contract, config.reference_steps, exercise_every);
+                if (paper_mode)
+                    row.american_reference_crr = binomial_price(
+                        config.contract, config.reference_steps, 1);
+                return matched_grid;
+            }, row.reference_runtime_ms);
             row.estimate = timed([&] {
                 if (paper_mode) {
                     const Paths paths = simulate_antithetic_paths(
                         config.contract, config.paths, config.steps, stream_seed(config.seed, 1));
                     const TrainingResult training = train_policy(config, paths, true);
-                    return evaluate_in_sample_antithetic(config, training, row.exercise_fraction);
+                    return evaluate_in_sample_antithetic(config, paths, training, row);
                 }
                 const Paths paths = needs_training
                     ? simulate_paths(config.contract, config.training_paths, config.steps,
@@ -266,6 +304,8 @@ int main(int argc, char **argv) {
                 const TrainingResult training = train_policy(config, paths, false);
                 return evaluate_policy(config, training.policy, row.exercise_fraction);
             }, row.runtime_ms);
+            if (paper_mode)
+                row.early_exercise_premium_bs = row.estimate.price - black_scholes(config.contract);
             return std::vector<Row>{row};
         });
 }

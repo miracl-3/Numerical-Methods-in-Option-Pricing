@@ -72,9 +72,9 @@ inline Config parse_config(int argc, char **argv) {
         } else throw std::invalid_argument("Unknown argument: " + name);
     }
     config.contract.validate();
-    if (config.steps == 0 || config.steps > 20000 || config.reference_steps == 0 ||
-        config.reference_steps > 20000)
-        throw std::invalid_argument("Steps/reference steps must be in [1, 20000].");
+    if (config.steps == 0 || config.steps > 100000 || config.reference_steps == 0 ||
+        config.reference_steps > 100000)
+        throw std::invalid_argument("Steps/reference steps must be in [1, 100000].");
     if (config.paths < 4 || config.paths > 10000000 || config.training_paths < 4 ||
         config.training_paths > 5000000)
         throw std::invalid_argument("Paths must be in [4, 10000000]; training paths in [4, 5000000].");
@@ -105,6 +105,17 @@ struct Row {
     double newton_second_moment_initial = 0.0;
     double newton_second_moment_final = 0.0;
     std::string newton_status = "not_applicable";
+    // Supplemental diagnostics used by the original-paper LSM benchmark.
+    double naive_path_standard_error = 0.0;
+    double european_price = 0.0;
+    double european_standard_error = 0.0;
+    double european_naive_path_standard_error = 0.0;
+    double early_exercise_premium = 0.0;
+    double early_exercise_premium_standard_error = 0.0;
+    double early_exercise_premium_naive_path_standard_error = 0.0;
+    double early_exercise_premium_bs = 0.0;
+    double american_reference_crr = 0.0;
+    double reference_runtime_ms = 0.0;
 };
 
 template <class Function> inline auto timed(Function function, double &milliseconds) {
@@ -120,7 +131,11 @@ inline void write_csv(std::ostream &out, const Config &config, const std::vector
            "independent_samples,payoff_evaluations,seed,price,standard_error,ci_lower,ci_upper,"
            "benchmark,absolute_error,runtime_ms,control_beta,importance_shift,boundary_ratio,"
            "exercise_fraction,reference_steps,newton_iterations,newton_gradient,"
-           "newton_second_moment_initial,newton_second_moment_final,newton_status\n";
+           "newton_second_moment_initial,newton_second_moment_final,newton_status,"
+           "naive_path_standard_error,european_price,european_standard_error,"
+           "european_naive_path_standard_error,early_exercise_premium,"
+           "early_exercise_premium_standard_error,early_exercise_premium_naive_path_standard_error,"
+           "early_exercise_premium_bs,american_reference_crr,reference_runtime_ms\n";
     out << std::setprecision(17);
     const auto &c = config.contract;
     constexpr double z95 = 1.959963984540054;
@@ -140,7 +155,13 @@ inline void write_csv(std::ostream &out, const Config &config, const std::vector
             << ',' << row.exercise_fraction << ',' << row.reference_steps << ','
             << row.newton_iterations << ',' << row.newton_gradient << ','
             << row.newton_second_moment_initial << ',' << row.newton_second_moment_final
-            << ',' << row.newton_status << '\n';
+            << ',' << row.newton_status << ',' << row.naive_path_standard_error
+            << ',' << row.european_price << ',' << row.european_standard_error
+            << ',' << row.european_naive_path_standard_error << ',' << row.early_exercise_premium
+            << ',' << row.early_exercise_premium_standard_error
+            << ',' << row.early_exercise_premium_naive_path_standard_error
+            << ',' << row.early_exercise_premium_bs << ',' << row.american_reference_crr
+            << ',' << row.reference_runtime_ms << '\n';
     }
 }
 

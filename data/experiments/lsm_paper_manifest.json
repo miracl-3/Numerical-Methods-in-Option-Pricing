@@ -1,6 +1,8 @@
 {
-  "paper": "Longstaff and Schwartz (2001), Table 1, American put experiment",
-  "profile": "paper",
+  "generated_at_utc": "2026-11-25T12:02:10.046016+00:00",
+  "paper": "Longstaff and Schwartz (2001), Table 1, journal pp. 126-127, normalization p. 143",
+  "paper_url": "https://www.kellogg.northwestern.edu/faculty/mcdonald/ftp/practicum/papers/longstaffschwartz.pdf",
+  "profile": "original_table1",
   "platform": "Windows-11-10.0.26300-SP0",
   "python": "3.12.13",
   "contract_cases": {
@@ -26,36 +28,82 @@
   "estimator": {
     "table_paths": 100000,
     "table_seed": 42,
-    "sampling": "paired Z and -Z shocks; standard errors use antithetic pair averages",
-    "regressors": "constant plus weighted Laguerre L0, L1, and L2 of spot/strike",
-    "valuation": "in-sample stopping-policy fit and valuation, as in Table 1"
+    "sampling": "Z/-Z antithetic pairs",
+    "regressors": "constant + exp(-x/2) * (L0, L1, L2), x=S/K",
+    "cashflow_normalization": "divide payoffs by K for regression, restore for output",
+    "valuation": "in-sample realized stopped cashflows, positive exercise dates",
+    "standard_error": "SD of pair averages / sqrt(number of pairs)"
   },
-  "convergence_case": {
-    "spot": 40.0,
+  "reference": {
+    "time_steps": 100000,
+    "terminal_nodes": 100001,
+    "total_lattice_nodes": 5000150001,
+    "types": [
+      "American CRR, every tree date",
+      "American CRR, matched exercise dates (50 dates/year)"
+    ],
+    "paper_reference": "printed FD, 40,000 time steps/year and 1,000 stock steps",
+    "reuse": "Convergence CSV reuses table C++ trees; simulation_reference_steps records local tree."
+  },
+  "convergence": {
+    "spot": 40,
     "volatility": 0.2,
-    "maturity": 1
+    "maturity": 1,
+    "path_counts": [
+      5000,
+      10000,
+      25000,
+      50000,
+      100000
+    ],
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71
+    ],
+    "replicates": 30
   },
-  "convergence_paths": [
-    5000,
-    10000,
-    25000,
-    50000,
-    100000
-  ],
-  "convergence_seeds": [
-    42,
-    43,
-    44,
-    45,
-    46
-  ],
-  "reference": "2000-step Bermudan CRR tree aligned to the 50-per-year exercise grid; not the paper's finite-difference reference",
-  "notes": [
-    "Each maturity uses 50 exercise dates per year (50 or 100 total dates).",
-    "Antithetic pair averages are the independent observations for standard errors.",
-    "In-sample standard errors do not measure independent policy-evaluation uncertainty.",
-    "In-sample estimates reproduce the paper protocol, not the independent-evaluation baseline.",
-    "The paper's 100,000-path Table 1 uses 50,000 antithetic pairs."
+  "workers": 2,
+  "paper_reference_sha256": "c022ae18446c868322d996f272144880b1edb09f4ce871c6ec4094dcb938537f",
+  "binary_sha256": "66fab7e4e192d35120c516485dd9f03fddbbd778d70d1c15a68c7bb3f145a57b",
+  "limitations": [
+    "Combined-SE comparisons are descriptive, not a multiple-testing-adjusted test.",
+    "The paper does not specify its SE formula; any inferred convention is tentative.",
+    "Naive path SE ignores antithetic covariance and is a diagnostic, not the reported estimator SE.",
+    "Pair-based plug-in SE omits dependence induced by fitting on the same paths.",
+    "Replicate SD repeats simulation and policy fitting; its estimate is itself noisy.",
+    "American CRR references with matched exercise dates and every tree date have different exercise opportunities.",
+    "Original RNG, seed and SE convention are unreported; bitwise reproduction is impossible.",
+    "Published entries are rounded to 0.001; CRR is additional, not an FD reproduction.",
+    "Reference wall times overlap with parallel workers; runtime_ms excludes references and I/O.",
+    "Seeds reproduce draws within the same compiler and standard-library implementation."
   ],
   "build": {
     "compiler": "g++.EXE (Rev5, Built by MSYS2 project) 16.1.0",
@@ -64,13 +112,22 @@
     "source_sha256": {
       "src/binomial_american.cpp": "3b80aa0d4990767396d57cd1b117427467fe7c1f03971def5cf0a1ebade47d7e",
       "src/binomial_european.cpp": "746a7b561e553f0fe23d214fe247b79fc0f9497cbb1001026da8af6ab50eef4f",
-      "src/lsm_american.cpp": "4ff5b2b5b5edb5be049ce4ffaa3182974fad58285ce5baeb1245043966b231d8",
+      "src/lsm_american.cpp": "6c06f8678fb8b6c79dafefbeb2f683da4c74d53a2163f447572cf82a4ae115e1",
       "src/monte_carlo_american.cpp": "75bca555d60932cee7746d6be66f777cb6f91cba6854c1da482cd385bb2ae7b0",
       "src/monte_carlo_european.cpp": "13170c38f266a554d004a0c6cbd92c06b07fa3b4ed5766f59b9d3d276e651490",
       "src/variance_reduction.cpp": "b0d7805d8b8a3d6aa68d37c9cc39fed5e542bccfa7f9f18170de7a1138f571cf",
-      "include/binomial.hpp": "01dd2ac3b513b38d1ee2eaf1ce8b8349fff22236051350bb1d61486e791bd028",
-      "include/experiment.hpp": "9a7d301198491d53742a607d751fb5231210d30d61720309cbfe90cf28d3bf95",
+      "include/binomial.hpp": "b4dafc59c4dc940f8092b5027a9c3edb5bea3333d64d47ec7f06f3de65b9c395",
+      "include/experiment.hpp": "a9195922239bfdb6a47cb2e25378a5489aa9ca2d6cf005c2b1d94c989aaf3c9e",
       "include/model.hpp": "27e6e0b1cc251dbe000c9cf39ab7544013df6a038f765cc0103e4b14bcc01d1e"
     }
-  }
+  },
+  "post_run_source_edits": [
+    {
+      "path": "src/lsm_american.cpp",
+      "change": "Corrected a source citation comment to Section 8, p. 143; executable statements unchanged. Verified reversing this one comment exactly restores the executed source hash.",
+      "executed_source_sha256": "6c06f8678fb8b6c79dafefbeb2f683da4c74d53a2163f447572cf82a4ae115e1",
+      "delivered_source_sha256": "7508ac97537038999c69657296071777996a635a1553864f4be03ecc5bf68a8d"
+    }
+  ],
+  "reporting_schema_note": "Reference labels and CSV/JSON field names use American throughout; american_grid_reference_crr denotes the American-option approximation on the same exercise dates as LSM. This reporting-only rename preserves all numerical results and historical build provenance."
 }

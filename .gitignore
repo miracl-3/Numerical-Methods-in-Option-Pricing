@@ -46,3 +46,4 @@ desktop.ini
 
 # Ad-hoc outputs; curated data/experiments and figures are intentionally versioned
 data/custom/
+tmp/

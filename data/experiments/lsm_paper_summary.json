@@ -1,0 +1,44 @@
+{
+  "profile": "original_table1",
+  "table_cases": 20,
+  "table_paths": 100000,
+  "reference_steps": 100000,
+  "price_mean_difference_from_paper": -0.0012683704934574268,
+  "price_rmse_vs_paper": 0.009021399305480422,
+  "price_max_absolute_difference_from_paper": 0.01683654946700841,
+  "cases_within_95_combined_se_of_paper": 20,
+  "max_absolute_combined_se_z_vs_paper": 1.6638749944928972,
+  "pair_se_to_paper_se_range": [
+    0.42000348843573565,
+    0.8275564497345399
+  ],
+  "pair_se_to_paper_se_median": 0.5697973067537143,
+  "naive_se_to_paper_se_range": [
+    0.8918786865382944,
+    1.0971704103674078
+  ],
+  "naive_se_to_paper_se_median": 0.9875468254463643,
+  "naive_se_cases_within_20_percent_of_paper": 20,
+  "pair_se_cases_within_20_percent_of_paper": 1,
+  "atm_full_budget_calibration": {
+    "paths": 100000,
+    "replicates": 30,
+    "mean_price": 2.313504003990055,
+    "replicate_price_sd": 0.0054588912798962325,
+    "mean_pair_standard_error": 0.005324779944026881,
+    "mean_naive_path_standard_error": 0.008694297320287578,
+    "replicate_sd_to_pair_se": 1.0251862682174862,
+    "replicate_sd_to_naive_se": 0.6278703245123979,
+    "american_grid_reference_crr": 2.3140663251464497,
+    "mean_minus_american_grid_crr": -0.0005623211563947628,
+    "rmse_vs_american_grid_crr": 0.005396515785374717
+  },
+  "interpretation": [
+    "Combined-SE comparisons are descriptive, not a multiple-testing-adjusted test.",
+    "The paper does not specify its SE formula; any inferred convention is tentative.",
+    "Naive path SE ignores antithetic covariance and is a diagnostic, not the reported estimator SE.",
+    "Pair-based plug-in SE omits dependence induced by fitting on the same paths.",
+    "Replicate SD repeats simulation and policy fitting; its estimate is itself noisy.",
+    "American CRR references with matched exercise dates and every tree date have different exercise opportunities."
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "title": "Valuing American Options by Simulation: A Simple Least-Squares Approach",
+  "authors": ["Francis A. Longstaff", "Eduardo S. Schwartz"],
+  "year": 2001,
+  "journal": "The Review of Financial Studies",
+  "volume": 14,
+  "issue": 1,
+  "pages": "113-147",
+  "doi": "10.1093/rfs/14.1.113",
+  "source_url": "https://www.kellogg.northwestern.edu/faculty/mcdonald/ftp/practicum/papers/longstaffschwartz.pdf",
+  "alternate_url": "https://galton.uchicago.edu/~mykland/346W05/Longstaff.pdf",
+  "table": 1,
+  "journal_page": 127,
+  "pdf_page_one_based": 15,
+  "data_file": "longstaff_schwartz_table1.csv",
+  "verification": "Transcribed from extracted PDF text and visually checked against a rendering of journal page 127.",
+  "printed_precision": "All reported prices and standard errors are rounded to 0.001 in the original table.",
+  "method_pages": {
+    "laguerre_equations_2_to_4": 122,
+    "american_put_protocol": 126,
+    "table_1": 127,
+    "in_sample_recommendation": 128,
+    "normalization": 143
+  },
+  "protocol": {
+    "stock_process": "Risk-neutral geometric Brownian motion with constant rate and volatility, zero dividends.",
+    "paths": 100000,
+    "antithetic_pairs": 50000,
+    "exercise_dates_per_year": 50,
+    "strike": 40,
+    "rate": 0.06,
+    "regressors": "Constant, exp(-x/2), exp(-x/2)*(1-x), exp(-x/2)*(1-2*x+x*x/2), with x=S/K.",
+    "regression_sample": "Only in-the-money paths at each exercise date.",
+    "regression_target": "Future realized cashflow, discounted to the regression date; stock and cashflows normalized by strike for fitting.",
+    "valuation": "In-sample stopping-rule fit and valuation; discount actual realized stopped cashflows to time zero and average.",
+    "early_exercise_value": "Simulated American value minus the closed-form Black-Scholes European value; no European control variate is stated for Table 1.",
+    "finite_difference_reference": "Published implicit finite difference results, 40000 time steps per year and 1000 stock-price steps, compared with explicit finite difference results.",
+    "unreported_details": [
+      "The paper does not publish its random-number generator, seeds, or normal-generation algorithm.",
+      "The paper does not state the standard-error calculation formula; its antithetic convention cannot be claimed exactly from the text.",
+      "The finite difference stock-domain bounds and complete numerical boundary implementation are not specified in Section 3.",
+      "A separately computed CRR tree is an additional numerical reference, not a reproduction of the paper's finite difference implementation."
+    ]
+  }
+}

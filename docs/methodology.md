@@ -191,7 +191,7 @@ one trained policy and quantify evaluation sampling uncertainty only. Repeated
 training/evaluation seeds expose additional variability, but do not create a
 certified upper/lower confidence bracket for the true American price.
 
-### Longstaff–Schwartz (2001) American-put experiment
+### Longstaff-Schwartz (2001) American-put experiment
 
 The optional `--lsm-mode paper` reproduces the setup of Table 1 in Longstaff
 and Schwartz (2001), separately from the default independent train/evaluation
@@ -209,23 +209,91 @@ $$L_0(x)=e^{-x/2},\quad
 L_1(x)=e^{-x/2}(1-x),\quad
 L_2(x)=e^{-x/2}(1-2x+x^2/2).$$
 
-The fitted rule is valued on the same antithetic paths, as in the paper's
-Table 1 experiment. Standard errors are calculated from the 50,000 pair
-averages; they do not represent an independent evaluation of the fitted
-policy or account for all policy-fitting uncertainty. This in-sample estimator
-is intentionally distinct from the independently evaluated LSM implementation
-and must not be used as the plain baseline in future AV-LSM/CV-LSM/IS-LSM
-comparisons. The paper itself uses antithetic sampling; those later comparisons
-should use a separate plain-LSM control so variance-reduction effects are
-interpretable.
+The fitting target is the selected future realized cashflow, discounted to the
+current regression date and divided by strike. Actual unnormalized stopped
+cashflows determine the final price. The fitted rule is valued on the same
+antithetic paths, as in Table 1. Exercise dates begin at the first positive
+grid time. The independently trained/evaluated mode remains available for
+separate policy evaluation.
 
-Run `python scripts/run_lsm_paper.py` after building to create the full
-20-case table and a sample-size convergence dataset for the at-the-money
-one-year case. `python scripts/plot_lsm_paper.py` creates the parameter-grid
-and convergence figures. The comparison line is a 2,000-step Bermudan CRR
-tree aligned with the paper's exercise grid, not the paper's finite-difference
-benchmark; the manifest records this distinction. `--quick` creates a smaller
-smoke-test dataset.
+Let $A_i$ and $A_i^{a}$ be the two discounted stopped cashflows in pair $i$,
+and let $B_i=(A_i+A_i^{a})/2$ for $m=N/2$ pairs. The primary within-run error is
+
+$$\widehat{\operatorname{SE}}_{\rm pair}
+=\sqrt{\frac{1}{m(m-1)}\sum_{i=1}^{m}(B_i-\bar B)^2}.$$
+
+Pair averaging accounts for the dependence between the two antithetic paths.
+In-sample regression also couples the fitted decisions across paths, so this
+plug-in calculation does not capture all exercise-policy fitting uncertainty.
+It is not an independent-policy valuation confidence bound. Repeating the
+entire simulation and regression with independent seeds provides an empirical
+check on total estimator dispersion.
+
+For comparison with the published table, a separate diagnostic is
+
+$$\widehat{\operatorname{SE}}_{\rm marginal}=s_A/\sqrt N,$$
+
+where $s_A$ is the sample standard deviation across all $N$ individual path
+cashflows. This diagnostic ignores antithetic covariance. The original paper
+does not state its SE formula; numerical agreement with its rounded values
+does not establish the authors' convention. The paper's early-exercise premium
+is the simulated American price minus the closed-form Black-Scholes European
+price. Section 3 does not specify a European control-variate adjustment.
+
+The original Table 1 data are recorded in
+[`data/reference/longstaff_schwartz_table1.csv`](../data/reference/longstaff_schwartz_table1.csv),
+with [source provenance](../data/reference/longstaff_schwartz_table1_provenance.json).
+The transcription was visually checked against journal page 127. All printed
+prices and errors have precision 0.001. The published finite difference
+reference uses an implicit scheme with 40,000 time steps per year and 1,000
+stock-price steps, with an additional comparison against an explicit scheme.
+Table 1's caption specifies 50 exercise dates per year for the comparison,
+so the published finite difference values refer to that same exercise schedule.
+The stock-domain boundaries and complete finite difference implementation are
+not specified there, so our rerun compares against the published values.
+
+The full runner computes two additional American CRR references at 100,000
+time steps: exercise at every tree date, and exercise at the same 50 dates per
+year as LSM. A tree with $N=100000$ has $N+1=100001$ terminal
+nodes and $(N+1)(N+2)/2=5000150001$ total nodes. Both CRR values retain
+stock-state discretization error. Their difference measures the effect of the
+different exercise schedules within that tree approximation.
+
+CRR includes a time-zero exercise comparison. Paper-mode LSM starts at the
+first positive exercise date. This distinction has no effect on the 20 cases:
+their matched-date CRR values all exceed the time-zero intrinsic payoff.
+
+In the C++ CSV, `early_exercise_premium_bs` subtracts analytical Black-Scholes
+and matches the paper's premium definition. The supplemental
+`early_exercise_premium` and its SE fields instead subtract the European
+payoff on the same simulated paths. This difference estimator is a diagnostic;
+it is not used to adjust the LSM price or replace the paper's premium.
+
+Run `python scripts/run_lsm_paper.py` after building. It uses seed 42 for the
+20-case table and seeds 42-71 for the default 30-replicate at-the-money,
+one-year convergence study at 5,000, 10,000, 25,000, 50,000, and 100,000
+paths. C++ calculates each contract's references once; the runner reuses
+those values for later simulations. `--workers` defaults to 2,
+`--replicates` to 30, and `--reference-steps` to 100000.
+`--quick` selects 10,000 table paths, 2,000 reference steps, two convergence
+seeds, and three path budgets for smoke testing.
+
+The empirical standard deviation of the $R$ complete-run estimates at a fixed
+path budget is
+
+$$s_{\rm runs}=\sqrt{\frac{1}{R-1}\sum_{j=1}^R
+(\widehat V_j-\overline{\widehat V})^2}.$$
+
+This is the empirical SE of a single run at that budget. The SE of the
+across-run mean is $s_{\rm runs}/\sqrt R$; they answer different questions.
+The summary CSV compares complete-run dispersion against the average
+within-run diagnostics. Thirty runs provide a useful diagnostic with
+substantial uncertainty in the estimated dispersion.
+
+`python scripts/plot_lsm_paper.py` reads the exported CSVs and creates the
+parameter-grid, convergence, and standard-error figures. C++ performs path
+simulation, regression, valuation, and within-run SE calculations. Python
+handles orchestration, across-run summaries, and visualization.
 
 ## Reproducibility and accounting
 
@@ -237,8 +305,25 @@ identical seeds do not imply identical samples across compilers or C++ standard
 libraries. Numerical tests use financial identities and tolerances rather than
 cross-platform bitwise Monte Carlo snapshots.
 
+The paper does not publish its random-number generator, seeds, normal-draw
+algorithm, or SE formula. The implemented benchmark reproduces its stated
+contract grid, path count, exercise dates, basis, and in-sample cashflow
+procedure. It cannot recreate the original random sample exactly. Published
+values, our rerun values, and the additional CRR references remain separately
+labeled throughout the CSVs and figures.
+
+Build metadata records the compiler and source hashes. The paper-run manifest
+records the profile, contract grid, seeds, sample budgets, CRR resolution,
+reference provenance, and build information. `lsm_paper_table.csv` records the
+20-case comparison; `lsm_paper_convergence.csv` preserves individual repeated
+runs; `lsm_paper_se_summary.csv` records the dispersion diagnostic;
+`lsm_paper_summary.json` records aggregate comparisons. Preserve a full run by
+choosing a separate `--output-dir` for smoke or exploratory runs.
+
 `runtime_ms` measures each method using a steady clock. It includes pilot or
-policy training, and excludes benchmark calculation and CSV I/O. For tree
+policy training, and excludes benchmark calculation and CSV I/O. The paper
+runner records reference calculations separately from simulation timing so
+reference reuse does not make simulation timings ambiguous. For tree
 rows, `paths`, `independent_samples`, and `payoff_evaluations` are zero;
 standard error is zero and the CI columns equal the deterministic price.
 Those CI columns are a schema convenience, not statistical tree error bounds.
@@ -247,11 +332,15 @@ observations, plus training or pilot observations. It excludes intermediate
 exercise tests and regression operations, so it is chiefly useful for the
 European variance-reduction comparisons.
 
-CSV `benchmark` means Black-Scholes for European methods and a CRR American
-reference for American methods. `absolute_error` for an American policy mixes
+CSV `benchmark` means Black-Scholes for European methods and an American CRR
+reference for American methods. In LSM paper mode, the American CRR reference
+uses matched exercise dates. `absolute_error` for an American policy mixes
 policy/grid error, reference approximation error, and sampling noise; it is
 not a pure Monte Carlo error. `reference_steps` records the numerical American
 reference resolution. `steps=1` for all exact-terminal European simulations.
+
+The default requirements and reproduction commands use the single `.venv`
+environment for the C++/CSV/Python workflow.
 
 ## References
 

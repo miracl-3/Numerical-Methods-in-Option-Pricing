@@ -24,5 +24,7 @@ if(BUILD_TESTING)
         add_test(NAME numerical_validation
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_pricing.py
                 --build-dir $<TARGET_FILE_DIR:binomial_european>)
+        add_test(NAME original_lsm_procedure
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_lsm_procedure.py)
     endif()
 endif()

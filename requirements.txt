@@ -1,7 +1,5 @@
 # Python >= 3.10. C++ builds and numerical tests use only the standard library.
+# Notebook tools are optional and are not part of the benchmark workflow.
 numpy>=1.26,<3
 pandas>=2.1,<4
 matplotlib>=3.8,<4
-jupyterlab>=4,<5
-ipykernel>=6.25,<8
-nbclient>=0.10,<1

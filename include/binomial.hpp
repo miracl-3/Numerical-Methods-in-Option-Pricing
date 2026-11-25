@@ -26,25 +26,41 @@ inline double binomial_price(const Contract &c, std::size_t steps,
         return value;
     }
     const double log_up = c.volatility * std::sqrt(dt);
-    const double up = std::exp(log_up);
-    const double down = 1.0 / up;
-    const double p = (std::exp(c.rate * dt) - down) / (up - down);
+    // expm1 avoids cancellation when dt is small (the reference uses 100,000
+    // intervals). This is algebraically the ordinary CRR probability.
+    const double p = std::expm1(c.rate * dt + log_up) / std::expm1(2.0 * log_up);
     if (!std::isfinite(p) || p < 0.0 || p > 1.0)
         throw std::invalid_argument("Invalid CRR probability; increase --steps.");
     if (std::log(c.spot) + static_cast<double>(steps) * log_up > 700.0)
         throw std::overflow_error("Tree stock values exceed the supported floating-point range.");
     const double discount = std::exp(-c.rate * dt);
-    const double ratio = up * up;
+    const double weight_down = discount * (1.0 - p);
+    const double weight_up = discount * p;
     std::vector<double> values(steps + 1);
-    double stock = c.spot * std::exp(-static_cast<double>(steps) * log_up);
-    for (std::size_t j = 0; j <= steps; ++j, stock *= ratio)
-        values[j] = c.payoff(stock);
+    // Every stock in a recombining tree is S0*exp(k*log_up), -N <= k <= N.
+    // Precompute these payoffs once. Besides eliminating billions of stock
+    // multiplications, evaluating each exponent independently prevents a zero
+    // underflow at the lowest node from contaminating the rest of a level.
+    std::vector<double> intrinsic(2 * steps + 1);
+    const double log_spot = std::log(c.spot);
+    for (std::size_t k = 0; k < intrinsic.size(); ++k) {
+        const double exponent = log_spot +
+            (static_cast<double>(k) - static_cast<double>(steps)) * log_up;
+        intrinsic[k] = c.payoff(std::exp(exponent));
+    }
+    for (std::size_t j = 0; j <= steps; ++j)
+        values[j] = intrinsic[2 * j];
     for (std::size_t i = steps; i-- > 0;) {
-        stock = c.spot * std::exp(-static_cast<double>(i) * log_up);
         const bool can_exercise = exercise_every != 0 && i % exercise_every == 0;
-        for (std::size_t j = 0; j <= i; ++j, stock *= ratio) {
-            const double continuation = discount * ((1.0 - p) * values[j] + p * values[j + 1]);
-            values[j] = can_exercise ? std::max(c.payoff(stock), continuation) : continuation;
+        if (can_exercise) {
+            const double *payoffs = intrinsic.data() + steps - i;
+            for (std::size_t j = 0; j <= i; ++j) {
+                const double continuation = weight_down * values[j] + weight_up * values[j + 1];
+                values[j] = std::max(payoffs[2 * j], continuation);
+            }
+        } else {
+            for (std::size_t j = 0; j <= i; ++j)
+                values[j] = weight_down * values[j] + weight_up * values[j + 1];
         }
     }
     if (!std::isfinite(values[0]))
