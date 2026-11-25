@@ -6,6 +6,8 @@ Python runs experiments, analyzes exported CSVs and creates figures.
 - [Mathematics, equation-to-function map and eight-path example](docs/methodology.md)
 - [Original-paper replication](docs/results/paper_replication.md)
 - [Plain LSM versus AV-LSM](docs/results/lsm_comparison.md)
+- [Statistical figures, confidence intervals and missing data](docs/results/statistical_figures.md)
+- [Reproduction conclusion and commands for missing runs](docs/results/reproduction_conclusion.md)
 - [Repository tree and file/cache rules](docs/repository.md)
 
 ## Build and test

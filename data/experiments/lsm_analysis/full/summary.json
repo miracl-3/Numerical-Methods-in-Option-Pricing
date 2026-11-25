@@ -1,0 +1,50 @@
+{
+  "simulations_run": 0,
+  "crr_calculations_run": 0,
+  "reused_convergence_runs": 180,
+  "missing_convergence_runs": 120,
+  "standardized_threshold_counts": {
+    "antithetic": {
+      "published_outside_1_96": 0,
+      "crr_outside_1_96": 2
+    },
+    "plain": {
+      "published_outside_1_96": 1,
+      "crr_outside_1_96": 0
+    }
+  },
+  "variance_reduction": [
+    {
+      "paths": 100000,
+      "runs_per_method": 30,
+      "variance_factor_plain_over_av": 2.5945101095305056,
+      "variance_reduction_percent": 61.45707830057533
+    }
+  ],
+  "efficiency": [
+    {
+      "sampling_method": "antithetic",
+      "paths": 100000,
+      "runs": 30,
+      "empirical_variance": 2.979949400572752e-05,
+      "median_runtime_seconds": 0.37916085,
+      "runtime_q1_seconds": 0.367539,
+      "runtime_q3_seconds": 0.39607299999999995,
+      "variance_time_product": 1.1298801476781551e-05,
+      "relative_efficiency": 3.1798590450720705
+    },
+    {
+      "sampling_method": "plain",
+      "paths": 100000,
+      "runs": 30,
+      "empirical_variance": 7.731508845675375e-05,
+      "median_runtime_seconds": 0.46470354999999997,
+      "runtime_q1_seconds": 0.4453963,
+      "runtime_q3_seconds": 0.483367725,
+      "variance_time_product": 3.5928596074417485e-05,
+      "relative_efficiency": 1.0
+    }
+  ],
+  "table2_mean_difference": 0.005698606969369452,
+  "table2_intervals_excluding_zero": 1
+}

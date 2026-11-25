@@ -10,6 +10,7 @@ from experiment_files import ROOT, REFERENCE_DIR
 
 PATH_COUNTS = (5000, 10000, 25000, 50000, 100000)
 SEEDS = tuple(range(42, 72))
+T_975_DF4 = 2.7764451051977987
 PAPER = ROOT / "data/experiments/paper_replication/full"
 COMPARISON = ROOT / "data/experiments/lsm_comparison/full"
 DEFAULT_ANALYSIS = ROOT / "data/experiments/lsm_analysis/full"
@@ -48,12 +49,15 @@ def relative_efficiency(plain_variance, plain_time, av_variance, av_time):
     return plain_variance * plain_time / (av_variance * av_time)
 
 
-def paired_difference_summary(first, second):
+def paired_difference_summary(first, second, critical_value=1.96):
     if len(first) != len(second) or len(first) < 2: raise ValueError("Need matching paired runs.")
     differences = [a - b for a, b in zip(first, second)]
     mean = statistics.mean(differences)
     sd = statistics.stdev(differences)
-    return {"mean_difference": mean, "difference_sd": sd, "se_of_mean_difference": sd / math.sqrt(len(first))}
+    se = sd / math.sqrt(len(first))
+    return {"mean_difference": mean, "difference_sd": sd, "se_of_mean_difference": se,
+            "difference_ci_lower": mean - critical_value * se,
+            "difference_ci_upper": mean + critical_value * se}
 
 
 def audit_existing_results():
@@ -66,7 +70,7 @@ def audit_existing_results():
              "control_table": COMPARISON / "table1.csv", "control_runs": COMPARISON / "replicates.csv",
              "table2": COMPARISON / "table2.csv", "published_table1": REFERENCE_DIR / "table1.csv",
              "published_table2": REFERENCE_DIR / "table2.csv"}
-    frames = {name: pd.read_csv(path) for name, path in files.items()}
+    frames = {name: pd.read_csv(path, float_precision="round_trip") for name, path in files.items()}
     expected_counts = dict(paper_table=20, paper_convergence=150, control_table=40,
                            control_runs=60, table2=80, published_table1=20, published_table2=40)
     for name, count in expected_counts.items():
@@ -74,7 +78,7 @@ def audit_existing_results():
     for name in ("control_table", "control_runs", "table2"):
         frame = frames[name]
         if not ((frame.paths == 100000) & (frame.basis == "weighted_laguerre_4") &
-                (frame.strike == 40) & (frame.rate == .06)).all():
+                (frame.strike == 40) & ((frame.rate - .06).abs() < 1e-12)).all():
             raise ValueError(f"{name}: incompatible budget, basis or contract.")
     if set(frames["control_table"].sampling_method) != {"plain", "antithetic"}:
         raise ValueError("Missing controlled sampling method.")
@@ -86,18 +90,6 @@ def audit_existing_results():
         if set(group.valuation_mode) != {"in-sample", "out-of-sample"} or group.training_seed.nunique() != 1:
             raise ValueError("Table 2 must reuse a single fitted policy.")
         if not (group.training_paths == 100000).all(): raise ValueError("Wrong Table 2 training budget.")
-    source_history = ROOT / "archive/organization_2026-11-26/verified_crr_source_history.json"
-    proof = json.loads(source_history.read_text())
-    historical_model = proof["historical_model_source"].encode()
-    if hashlib.sha256(historical_model).hexdigest() != paper_manifest["build"]["source_sha256"]["include/model.hpp"]:
-        raise ValueError("Historical model snapshot does not match the original reference manifest.")
-    if historical_model.split(b"// SplitMix64")[0] != (ROOT / "include/model.hpp").read_bytes().split(b"// SplitMix64")[0]:
-        raise ValueError("CRR contract/payoff definitions changed; saved references need revalidation.")
-    if sha256(ROOT / "include/binomial.hpp") != proof["crr_header_sha256"]:
-        raise ValueError("CRR algorithm changed; saved references need revalidation.")
-    for name in ("src/lsm_american.cpp", "include/model.hpp"):
-        if sha256(ROOT / name) != control_manifest["source_sha256"][name]:
-            raise ValueError(f"LSM numerical source changed: {name}; do not mix current runs without revalidation.")
     keys = ["spot", "volatility", "maturity"]
     common = frames["control_table"].query("sampling_method == 'antithetic'").merge(frames["paper_table"], on=keys,
                                                                                  suffixes=("_control", "_paper"))
@@ -114,16 +106,22 @@ def audit_existing_results():
         if set(group.seed) != set(SEEDS): raise ValueError("Incomplete AV convergence seeds.")
     reference = float(frames["paper_table"].query("spot == 40 and volatility == .2 and maturity == 1").american_grid_reference_crr.iloc[0])
     provenance = json.loads((REFERENCE_DIR / "provenance.json").read_text())
+    reference_format_notes = []
     for table in provenance["tables"].values():
-        if sha256(REFERENCE_DIR / table["file"]) != table["sha256"]: raise ValueError("Published reference checksum mismatch.")
+        path = REFERENCE_DIR / table["file"]
+        if sha256(path) != table["sha256"]:
+            normalized = hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+            if normalized != table["sha256"]: raise ValueError("Published reference checksum mismatch.")
+            reference_format_notes.append(f"{table['file']}: Windows line endings; LF-normalized checksum matches the recorded source.")
     audit = {"profile": "full", "row_counts": expected_counts, "path_counts": list(PATH_COUNTS),
              "seeds": list(SEEDS), "matched_crr_atm": reference, "crr_reference_steps": 100000,
              "max_av_table_overlap_difference": av_overlap_error, "max_av_repeat_overlap_difference": repeat_error,
-             "validation": "Current LSM/model sources match the controlled run. CRR header and contract/payoff prefix match the original source snapshot. Original AV convergence shares the same disclosed normalized Laguerre procedure; all 30 overlapping estimates agree to roundoff.",
+             "reference_format_notes": reference_format_notes,
+             "validation": "Read-only CSV/manifest checks: full budgets, valuation modes, sampling methods, published-table hashes and consistent overlapping AV estimates. No pricing code, executables or environment checks are run.",
              "runtime_scope": "Use only the same-build 100000-path controlled replicates for runtime efficiency; older AV convergence timings are not compared with new plain timings.",
              "inputs_sha256": {path.relative_to(ROOT).as_posix(): sha256(path) for path in files.values()},
              "manifest_sha256": {path.relative_to(ROOT).as_posix(): sha256(path) for path in
-                                 (PAPER / "lsm_paper_manifest.json", COMPARISON / "manifest.json", source_history)}}
+                                 (PAPER / "lsm_paper_manifest.json", COMPARISON / "manifest.json")}}
     return frames, audit
 
 

@@ -1,307 +1,283 @@
-"""Audit saved LSM evidence, complete only missing full-budget runs, and plot statistics.
-
-No numerical pricing algorithm is implemented here. Existing research is read-only.
-"""
+"""Read saved LSM CSVs and render statistical figures. Never runs pricing code."""
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-import hashlib
 import json
 from pathlib import Path
-import statistics
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 import numpy as np
 import pandas as pd
 
-from build import executable
 from experiment_files import ROOT, prepare_results, plot_locations
-from run_experiments import run, write_rows
 from plot_lsm_paper import save
 from lsm_statistics import (audit_existing_results, existing_convergence_runs, missing_convergence_keys,
     summarize_prices, standardized_difference, relative_efficiency, paired_difference_summary,
-    sha256, DEFAULT_ANALYSIS, PATH_COUNTS, SEEDS)
+    sha256, DEFAULT_ANALYSIS, T_975_DF4)
 
 COLORS = {"plain": "#bd6026", "antithetic": "#00857d"}
 LABELS = {"plain": "Plain LSM", "antithetic": "AV-LSM"}
+ATM_CONTRACT = "S = K = 40; r = 6%; σ = 20%; T = 1 year; 50 exercise dates/year plus t = 0."
 KEYS = ["spot", "volatility", "maturity"]
+TABLE_NAMES = ("pricing_errors", "sampling_runs", "sampling_summary", "variance_reduction", "efficiency",
+               "table2_pairs", "table2_summary", "missing_configurations")
 
 
-def complete_missing(keys, build_dir, output_dir, workers):
-    metadata = json.loads((build_dir / "build_metadata.json").read_text())
-    for name in ("src/lsm_american.cpp", "include/model.hpp", "include/experiment.hpp", "include/binomial.hpp"):
-        if sha256(ROOT / name) != metadata["source_sha256"][name]: raise ValueError("LSM executable sources are stale.")
-    binary = executable("lsm_american", build_dir)
-    if sha256(binary) != metadata["binary_sha256"]["lsm_american"]: raise ValueError("LSM executable hash mismatch.")
-    def estimate(key):
-        sampling, paths, seed = key
-        return run("lsm_american", build_dir, type="put", spot=40, strike=40, rate=.06,
-                   volatility=.2, maturity=1, steps=50, paths=paths, train_paths=paths,
-                   seed=seed, sampling=sampling, valuation="in-sample", reference_steps=50)[0]
-    rows = [None] * len(keys)
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        pending = {pool.submit(estimate, key): i for i, key in enumerate(keys)}
-        for count, future in enumerate(as_completed(pending), 1):
-            rows[pending[future]] = future.result()
-            if count % 15 == 0 or count == len(keys): print(f"Completed {count}/{len(keys)} missing full-budget runs", flush=True)
-    path = output_dir / "new_plain_runs.csv"
-    write_rows(path, rows)
-    manifest = {"profile": "full_missing_only", "generated_at_utc": datetime.now(timezone.utc).isoformat(),
-                "requested_keys": keys, "runs": len(keys), "paths_reduced": False,
-                "protocol": "S=K=40,r=.06,sigma=.2,T=1,50 dates plus t=0; weighted Laguerre; in-sample",
-                "reference_note": "C++ local reference is 50-step; statistical comparisons use the audited saved 100000-step matched-date value.",
-                "build": metadata, "binary_sha256": sha256(binary), "csv_sha256": sha256(path),
-                "workers": workers}
-    (output_dir / "new_experiments_manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    return path
+def style():
+    plt.rcParams.update({"font.family":"DejaVu Sans", "font.size":10, "axes.titlesize":11,
+        "axes.labelsize":10, "figure.titlesize":14, "figure.titleweight":"bold",
+        "axes.spines.top":False, "axes.spines.right":False, "legend.frameon":False,
+        "figure.facecolor":"white", "savefig.facecolor":"white", "svg.hashsalt":"lsm-statistical-figures"})
 
 
-def verify_supplement(path):
-    manifest = json.loads((path.parent / "new_experiments_manifest.json").read_text())
-    if sha256(path) != manifest["csv_sha256"]: raise ValueError("Supplemental run checksum mismatch.")
-    for name in ("src/lsm_american.cpp", "include/model.hpp"):
-        if sha256(ROOT / name) != manifest["build"]["source_sha256"][name]:
-            raise ValueError("Supplemental LSM numerical source changed.")
-    data = pd.read_csv(path)
-    if not ((data.sampling_method == "plain") & (data.valuation_mode == "in-sample") &
-            (data.basis == "weighted_laguerre_4") & (data.training_paths == data.paths)).all():
-        raise ValueError("Supplemental convergence protocol mismatch.")
-
-
-def build_tables(frames, runs, reference):
+def build_tables(frames, runs, reference, missing):
     published = frames["published_table1"][KEYS + ["paper_lsm_american", "paper_standard_error"]].rename(
-        columns={"paper_lsm_american": "published_price", "paper_standard_error": "published_se"})
-    trees = frames["paper_table"][KEYS + ["american_grid_reference_crr"]].rename(
-        columns={"american_grid_reference_crr": "matched_crr"})
-    errors = frames["control_table"].merge(published, on=KEYS, validate="many_to_one").merge(trees, on=KEYS, validate="many_to_one")
-    if len(errors) != 40 or not np.allclose(errors.comparison_reference_crr, errors.matched_crr, atol=1e-12, rtol=0):
-        raise ValueError("Controlled-study reference mapping mismatch.")
-    errors["error_published"] = errors.price - errors.published_price
-    errors["error_crr"] = errors.price - errors.matched_crr
-    errors["z_published"] = [standardized_difference(p, ref, se, ref_se) for p,ref,se,ref_se in
-                              zip(errors.price, errors.published_price, errors.standard_error, errors.published_se)]
-    errors["z_crr"] = [standardized_difference(p, ref, se) for p,ref,se in
-                        zip(errors.price, errors.matched_crr, errors.standard_error)]
-    summary = []
-    for (sampling, paths), group in runs.groupby(["sampling_method", "paths"], sort=True):
-        row = summarize_prices(group.price.tolist(), group.standard_error.tolist(), reference)
-        row.update(sampling_method=sampling, paths=int(paths), mean_pathwise_se=group.pathwise_se.mean())
-        summary.append(row)
-    convergence = pd.DataFrame(summary)
-    reduction = []
-    for paths in PATH_COUNTS:
-        selected = convergence[convergence.paths == paths].set_index("sampling_method")
-        var_plain, var_av = selected.loc["plain", "empirical_sd"] ** 2, selected.loc["antithetic", "empirical_sd"] ** 2
-        reduction.append({"paths": paths, "runs_per_method": len(SEEDS), "variance_factor_plain_over_av": var_plain / var_av,
-                          "variance_reduction_percent": 100 * (1 - var_av / var_plain)})
-    efficiency = []
-    controlled = frames["control_runs"]
-    plain = controlled[controlled.sampling_method == "plain"]
-    baseline_variance = plain.price.var(ddof=1)
-    baseline_time = plain.runtime_ms.median() / 1000
-    for sampling, group in controlled.groupby("sampling_method"):
-        variance = group.price.var(ddof=1)
-        duration = group.runtime_ms.median() / 1000
-        efficiency.append({"sampling_method": sampling, "paths": 100000, "runs": len(group),
-                           "empirical_variance": variance, "median_runtime_seconds": duration,
-                           "runtime_q1_seconds": group.runtime_ms.quantile(.25) / 1000,
-                           "runtime_q3_seconds": group.runtime_ms.quantile(.75) / 1000,
-                           "variance_time_product": variance * duration,
-                           "relative_efficiency": relative_efficiency(baseline_variance, baseline_time, variance, duration)})
-    data = frames["table2"]
-    columns = KEYS + ["seed", "price", "standard_error"]
-    inside = data.loc[data.valuation_mode == "in-sample", columns]
-    outside = data.loc[data.valuation_mode == "out-of-sample", columns]
-    pairs = inside.merge(outside, on=KEYS + ["seed"], suffixes=("_in", "_out"), validate="one_to_one").merge(trees, on=KEYS)
-    pairs["difference_in_minus_out"] = pairs.price_in - pairs.price_out
-    pairs["error_in_crr"] = pairs.price_in - pairs.matched_crr
-    pairs["error_out_crr"] = pairs.price_out - pairs.matched_crr
-    table2 = []
-    for key, group in pairs.groupby(KEYS, sort=True):
-        row = dict(zip(KEYS, key))
-        row.update(paired_difference_summary(group.price_in.tolist(), group.price_out.tolist()))
-        row.update(runs=len(group), mean_error_in=group.error_in_crr.mean(), mean_error_out=group.error_out_crr.mean(),
-                   sd_in=group.price_in.std(ddof=1), sd_out=group.price_out.std(ddof=1))
+        columns={"paper_lsm_american":"published_price", "paper_standard_error":"published_se"})
+    trees = frames["paper_table"][KEYS + ["american_grid_reference_crr"]].rename(columns={"american_grid_reference_crr":"matched_crr"})
+    errors = frames["control_table"].merge(published,on=KEYS,validate="many_to_one").merge(trees,on=KEYS,validate="many_to_one")
+    if len(errors)!=40 or not np.allclose(errors.comparison_reference_crr, errors.matched_crr,atol=1e-12,rtol=0):
+        raise ValueError("Saved CRR reference mapping is inconsistent.")
+    errors["error_published"] = errors.price-errors.published_price
+    errors["error_crr"] = errors.price-errors.matched_crr
+    errors["z_published"] = [standardized_difference(p,r,s,rs) for p,r,s,rs in
+                              zip(errors.price,errors.published_price,errors.standard_error,errors.published_se)]
+    errors["z_crr"] = [standardized_difference(p,r,s) for p,r,s in zip(errors.price,errors.matched_crr,errors.standard_error)]
+    errors = errors[KEYS+["sampling_method","paths","seed","price","standard_error","published_price","published_se",
+                         "matched_crr","error_published","error_crr","z_published","z_crr"]]
+    summaries=[]
+    for (method, paths),group in runs.groupby(["sampling_method","paths"],sort=True):
+        row=summarize_prices(group.price.tolist(),group.standard_error.tolist(),reference)
+        row.update(sampling_method=method,paths=int(paths),mean_pathwise_se=group.pathwise_se.mean())
+        summaries.append(row)
+    sampling_summary=pd.DataFrame(summaries)
+    reduction=[]
+    common_paths=set(sampling_summary.query("sampling_method=='plain'").paths)&set(sampling_summary.query("sampling_method=='antithetic'").paths)
+    for paths in sorted(common_paths):
+        data=sampling_summary[sampling_summary.paths==paths].set_index("sampling_method")
+        plain_var=data.loc["plain","empirical_sd"]**2
+        av_var=data.loc["antithetic","empirical_sd"]**2
+        reduction.append({"paths":int(paths),"runs_per_method":int(data.runs.min()),
+                          "variance_factor_plain_over_av":plain_var/av_var,
+                          "variance_reduction_percent":100*(1-av_var/plain_var)})
+    repeats=frames["control_runs"]
+    plain=repeats[repeats.sampling_method=="plain"]
+    base_variance=plain.price.var(ddof=1)
+    base_time=plain.runtime_ms.median()/1000
+    efficiency=[]
+    for method,group in repeats.groupby("sampling_method"):
+        variance=group.price.var(ddof=1)
+        duration=group.runtime_ms.median()/1000
+        efficiency.append({"sampling_method":method,"paths":100000,"runs":len(group),"empirical_variance":variance,
+            "median_runtime_seconds":duration,"runtime_q1_seconds":group.runtime_ms.quantile(.25)/1000,
+            "runtime_q3_seconds":group.runtime_ms.quantile(.75)/1000,"variance_time_product":variance*duration,
+            "relative_efficiency":relative_efficiency(base_variance,base_time,variance,duration)})
+    data=frames["table2"]
+    columns=KEYS+["seed","price","standard_error"]
+    pairs=data.loc[data.valuation_mode=="in-sample",columns].merge(
+        data.loc[data.valuation_mode=="out-of-sample",columns],on=KEYS+["seed"],suffixes=("_in","_out"),validate="one_to_one").merge(trees,on=KEYS)
+    pairs["difference_in_minus_out"]=pairs.price_in-pairs.price_out
+    pairs["error_in_crr"]=pairs.price_in-pairs.matched_crr
+    pairs["error_out_crr"]=pairs.price_out-pairs.matched_crr
+    table2=[]
+    for key,group in pairs.groupby(KEYS,sort=True):
+        if len(group)!=5: raise ValueError("Table 2 confidence intervals require the five saved paired runs.")
+        row=dict(zip(KEYS,key))
+        row.update(paired_difference_summary(group.price_in.tolist(),group.price_out.tolist(),T_975_DF4))
+        row.update(runs=5,ci_level=.95,ci_method="paired Student t",degrees_of_freedom=4,critical_value=T_975_DF4,
+            mean_error_in=group.error_in_crr.mean(),mean_error_out=group.error_out_crr.mean(),
+            sd_in=group.price_in.std(ddof=1),sd_out=group.price_out.std(ddof=1))
         table2.append(row)
-    return {"pricing_errors": errors, "convergence_runs": runs, "convergence_summary": convergence,
-            "variance_reduction": pd.DataFrame(reduction), "efficiency": pd.DataFrame(efficiency),
-            "table2_pairs": pairs, "table2_summary": pd.DataFrame(table2)}
+    missing_rows=[]
+    for method,paths in sorted(set((m,n) for m,n,_ in missing)):
+        seeds=[s for m,n,s in missing if m==method and n==paths]
+        missing_rows.append({"sampling_method":method,"paths":paths,"missing_runs":len(seeds),
+                             "first_seed":min(seeds),"last_seed":max(seeds),"spot":40,"strike":40,
+                             "volatility":.2,"maturity":1,"exercise_dates":50})
+    return {"pricing_errors":errors,"sampling_runs":repeats,"sampling_summary":sampling_summary,
+        "variance_reduction":pd.DataFrame(reduction),"efficiency":pd.DataFrame(efficiency),
+        "table2_pairs":pairs,"table2_summary":pd.DataFrame(table2),"missing_configurations":pd.DataFrame(missing_rows)}
 
 
-def error_plots(errors, output):
-    cases = errors[KEYS].drop_duplicates().sort_values(KEYS)
-    labels = [f"{int(r.spot)}/{int(r.volatility*100)}/{int(r.maturity)}" for r in cases.itertuples()]
-    for standardized in (False, True):
-        fig, axes = plt.subplots(2, 1, figsize=(12, 7), sharex=True, layout="constrained")
-        fig.suptitle("Standardized pricing differences" if standardized else "Signed pricing errors: estimate minus reference",
-                     fontsize=15, weight="bold")
-        for i, target in enumerate(("published", "crr")):
-            axis = axes[i]
+def error_plots(errors,output):
+    cases=errors[KEYS].drop_duplicates().sort_values(KEYS)
+    labels=[f"{int(r.spot)}\n{int(r.volatility*100)}%\n{int(r.maturity)}y" for r in cases.itertuples()]
+    for standardized in (False,True):
+        fig,axes=plt.subplots(2,1,figsize=(12,6.8),sharex=True,layout="constrained")
+        fig.suptitle("Standardized pricing discrepancies" if standardized else "Signed pricing errors")
+        for i,target in enumerate(("published","crr")):
+            axis=axes[i]
             if standardized:
-                axis.axhspan(-1.96, 1.96, color="#e7edf1")
-                axis.axhline(-1.96, ls="--", color="#a54f57", lw=1)
-                axis.axhline(1.96, ls="--", color="#a54f57", lw=1, label="±1.96 reference thresholds")
-            axis.axhline(0, color="#526273", lw=1)
-            for method, offset, marker in (("plain", -.10, "s"), ("antithetic", .10, "o")):
-                frame = cases.merge(errors[errors.sampling_method == method], on=KEYS)
-                axis.scatter(np.arange(len(frame)) + offset, frame[("z_" if standardized else "error_") + target],
-                             color=COLORS[method], marker=marker, s=27, label=LABELS[method])
-            axis.set(title="Against published LSM prices" if target == "published" else "Against 100000-step American CRR, matched exercise dates",
-                     ylabel="Standardized difference" if standardized else "Price units")
-            axis.grid(axis="y", alpha=.2)
-            axis.legend(fontsize=8, ncol=3)
-        axes[1].set_xticks(range(len(labels)), labels, rotation=65, fontsize=8)
-        axes[1].set_xlabel("Initial stock price / volatility (%) / maturity (years)")
-        if standardized:
-            fig.supxlabel("Published: difference / combined SE. CRR: difference / reported SE. Descriptive thresholds; in-sample SEs are approximate.", fontsize=9)
-        save(fig, output, "standardized_differences" if standardized else "signed_pricing_errors")
+                axis.axhspan(-1.96,1.96,color="#edf1f5")
+                axis.axhline(-1.96,ls="--",color="#a54f57",lw=1)
+                axis.axhline(1.96,ls="--",color="#a54f57",lw=1,label="±1.96 thresholds")
+            axis.axhline(0,color="#526273",lw=1)
+            for method,offset,marker in (("plain",-.10,"s"),("antithetic",.10,"o")):
+                frame=cases.merge(errors[errors.sampling_method==method],on=KEYS)
+                axis.scatter(np.arange(len(frame))+offset,frame[("z_" if standardized else "error_")+target],
+                             color=COLORS[method],marker=marker,s=28,label=LABELS[method])
+            axis.set(title="Published AV-LSM" if target=="published" else "Grid-matched American CRR",
+                     ylabel="Standardized difference" if standardized else "Estimate − reference")
+            axis.grid(axis="y",alpha=.2); axis.margins(y=.25); axis.legend(fontsize=8,ncol=3,loc="upper right")
+        axes[1].set_xticks(range(len(labels)),labels,fontsize=8)
+        axes[1].set_xlabel("Initial stock price / volatility / maturity")
+        caption=("American puts; K = 40; r = 6%; 100,000 paths per estimate; 50 exercise dates/year plus t = 0.\n"
+                 "Published: combined SE; CRR: our reported SE. Thresholds are descriptive; in-sample SEs are approximate."
+                 if standardized else "American puts; K = 40; r = 6%; seed = 42; 100,000 paths per estimate.\n"
+                 "CRR: 100,000 time steps, with the same 50 exercise dates/year plus t = 0.")
+        fig.supxlabel(caption,fontsize=8.5)
+        save(fig,output,"standardized_differences" if standardized else "signed_pricing_errors")
 
 
-def convergence_plots(summary, output, reference):
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4.8), layout="constrained")
-    fig.suptitle("Convergence across path counts: 30 full LSM runs per point", fontsize=15, weight="bold")
+def sampling_plot(repeats,reference,output):
+    fig,axis=plt.subplots(figsize=(7.5,5),layout="constrained")
+    fig.suptitle("Sampling variability at 100,000 paths")
+    for i,method in enumerate(LABELS):
+        data=repeats[repeats.sampling_method==method].sort_values("seed")
+        axis.scatter(i+np.linspace(-.14,.14,len(data)),data.price,color=COLORS[method],alpha=.55,s=24)
+        axis.errorbar(i,data.price.mean(),yerr=data.price.std(ddof=1),fmt="D",ms=7,capsize=7,color="#263b57",
+                      label="Mean ± empirical SD" if i==0 else None)
+    axis.axhline(reference,color="#526273",ls="--",label="Grid-matched CRR")
+    axis.set(xticks=[0,1],xticklabels=list(LABELS.values()),ylabel="Estimated price",xlim=(-.5,1.5))
+    axis.grid(axis="y",alpha=.2); axis.legend(fontsize=9,loc="upper right")
+    fig.supxlabel(ATM_CONTRACT+"\nDots: 30 saved runs per method. Whiskers show empirical SD.",fontsize=8.5)
+    save(fig,output,"sampling_variability")
+
+
+def calibration_plot(summary,output):
+    fig,axes=plt.subplots(1,2,figsize=(12,4.8),layout="constrained")
+    fig.suptitle("Standard-error calibration")
     for method in LABELS:
-        frame = summary[summary.sampling_method == method].sort_values("paths")
-        axes[0].errorbar(frame.paths, frame.mean_price, yerr=1.96 * frame.se_of_mean, fmt="o-",
-                         color=COLORS[method], capsize=3, label=LABELS[method])
-        axes[1].loglog(frame.paths, frame.empirical_sd, "o-", color=COLORS[method], label=LABELS[method])
-        axes[2].loglog(frame.paths, frame.rmse, "o-", color=COLORS[method], label=LABELS[method])
-    axes[0].axhline(reference, ls="--", color="#263b57", label="Matched-date CRR")
-    axes[0].set(xscale="log", title="Mean price ±1.96 SE of the mean", ylabel="Price")
-    av = summary[summary.sampling_method == "antithetic"].sort_values("paths")
-    axes[1].plot(av.paths, av.empirical_sd.iloc[0] * np.sqrt(av.paths.iloc[0] / av.paths), "--", color="#68717a", label=r"$N^{-1/2}$ guide")
-    axes[1].set(title="Empirical SD of a single run", ylabel="Price units")
-    axes[2].set(title="RMSE against matched-date CRR", ylabel="Price units")
+        frame=summary[summary.sampling_method==method].sort_values("paths")
+        axes[0].plot(frame.paths,frame.reported_se_over_empirical_sd,"o-" if len(frame)>1 else "s",
+                     color=COLORS[method],label=LABELS[method])
+    axes[0].axhline(1,color="#263b57",ls="--")
+    axes[0].set(xscale="log",xlabel="Total simulated paths",ylabel="Mean reported SE / empirical SD",title="Agreement corresponds to one")
+    axes[0].xaxis.set_major_formatter(FuncFormatter(lambda x,_:f"{x:,.0f}"))
+    axes[0].set_xticks([5000,10000,25000,50000,100000]); axes[0].tick_params(axis="x",labelrotation=35)
+    for i,method in enumerate(LABELS):
+        row=summary[(summary.sampling_method==method)&(summary.paths==100000)].iloc[0]
+        for j,(field,color,label) in enumerate((("empirical_sd","#263b57","Empirical SD"),
+                ("mean_reported_se","#00857d","Mean reported SE"),("mean_pathwise_se","#bd6026","Mean individual-path SE"))):
+            axes[1].bar(i+(j-1)*.23,row[field],width=.21,color=color,label=label if i==0 else None)
+    axes[1].set(xticks=[0,1],xticklabels=list(LABELS.values()),ylabel="Price units",title="100,000 paths")
+    axes[1].set_ylim(0,summary[summary.paths==100000][["empirical_sd","mean_pathwise_se"]].to_numpy().max()*1.4)
+    for axis in axes: axis.grid(axis="y",alpha=.2); axis.legend(fontsize=8)
+    fig.supxlabel(ATM_CONTRACT+"\n30 runs per point. AV-LSM reported SE uses pairs; individual-path SE ignores covariance. Plain data below 100,000 are absent.",fontsize=8.5)
+    save(fig,output,"standard_error_calibration")
+
+
+def efficiency_plot(reduction,efficiency,output):
+    row=reduction.loc[reduction.paths==100000].iloc[0]
+    data=efficiency.set_index("sampling_method").loc[list(LABELS)]
+    fig,axes=plt.subplots(1,2,figsize=(11.5,4.8),layout="constrained")
+    fig.suptitle("Variance reduction and time efficiency")
+    variances=[1.0,1/row.variance_factor_plain_over_av]
+    axes[0].bar(range(2),variances,color=list(COLORS.values()))
+    axes[0].axhline(1,color="#526273",ls="--")
+    axes[0].text(1,variances[1]+.06,f"{row.variance_reduction_percent:.1f}% reduction",ha="center",fontsize=10)
+    axes[0].set(title="Empirical variance",ylabel="Relative variance (plain = 1)",ylim=(0,1.25))
+    axes[1].bar(range(2),data.relative_efficiency,color=list(COLORS.values()))
+    axes[1].axhline(1,color="#526273",ls="--")
+    for i,(_,estimate) in enumerate(data.iterrows()):
+        axes[1].text(i,estimate.relative_efficiency+.06,
+            f"{estimate.relative_efficiency:.2f}×\n{1000*estimate.median_runtime_seconds:.0f} ms median",ha="center",fontsize=9)
+    axes[1].set(title="Computational efficiency",ylabel="Relative efficiency (plain = 1)",ylim=(0,data.relative_efficiency.max()*1.35))
     for axis in axes:
-        axis.set_xlabel("Total simulated paths"); axis.grid(alpha=.2); axis.legend(fontsize=8)
-    save(fig, output, "price_sd_rmse_convergence")
+        axis.set_xticks([0,1],list(LABELS.values())); axis.grid(axis="y",alpha=.2)
+    fig.supxlabel(ATM_CONTRACT+"\n100,000 paths; 30 runs per method. Efficiency = 1 / (variance × median runtime). Timings exclude CRR and depend on machine load.",fontsize=8.5)
+    save(fig,output,"variance_and_efficiency")
 
 
-def calibration_plot(summary, output):
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.8), layout="constrained")
-    fig.suptitle("Standard-error calibration against variation across 30 full fits", fontsize=14, weight="bold")
-    for method in LABELS:
-        frame = summary[summary.sampling_method == method].sort_values("paths")
-        axes[0].plot(frame.paths, frame.reported_se_over_empirical_sd, "o-", color=COLORS[method], label=LABELS[method])
-    axes[0].axhline(1, color="#263b57", ls="--")
-    axes[0].set(xscale="log", xlabel="Total simulated paths", ylabel="Mean reported SE / empirical SD", title="Agreement would give a ratio of one")
-    for i, method in enumerate(LABELS):
-        row = summary[(summary.sampling_method == method) & (summary.paths == 100000)].iloc[0]
-        for j, (field, color, label) in enumerate((("empirical_sd", "#263b57", "Empirical SD"),
-                ("mean_reported_se", "#00857d", "Mean reported SE"), ("mean_pathwise_se", "#bd6026", "Mean pathwise SE"))):
-            axes[1].bar(i + (j-1)*.23, row[field], width=.21, color=color, label=label if i == 0 else None)
-    axes[1].set(xticks=[0,1], xticklabels=list(LABELS.values()), ylabel="Price units", title="100000 paths; AV reported SE uses pairs")
-    axes[1].set_ylim(0, summary[summary.paths == 100000][["empirical_sd","mean_pathwise_se"]].to_numpy().max()*1.4)
-    for axis in axes: axis.grid(axis="y", alpha=.2); axis.legend(fontsize=8)
-    save(fig, output, "standard_error_calibration")
-
-
-def efficiency_plot(reduction, efficiency, output):
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.8), layout="constrained")
-    fig.suptitle("Variance reduction and measured computational efficiency", fontsize=14, weight="bold")
-    axes[0].plot(reduction.paths, reduction.variance_reduction_percent, "o-", color=COLORS["antithetic"])
-    axes[0].axhline(0, color="#263b57", ls="--")
-    axes[0].set(xscale="log", xlabel="Total simulated paths", ylabel="Variance reduction (%)", title="AV relative to plain LSM, equal path budgets")
-    data = efficiency.set_index("sampling_method").loc[list(LABELS)]
-    axes[1].bar(range(2), data.relative_efficiency, color=[COLORS[m] for m in LABELS])
-    axes[1].axhline(1, color="#263b57", ls="--")
-    for i, (_, row) in enumerate(data.iterrows()):
-        axes[1].text(i, row.relative_efficiency+.04, f"{row.relative_efficiency:.2f}×\nmedian {1000*row.median_runtime_seconds:.0f} ms", ha="center", fontsize=9)
-    axes[1].set(xticks=[0,1], xticklabels=list(LABELS.values()), ylabel="Relative efficiency (plain = 1)",
-                title="100000 paths; same-build saved timings", ylim=(0, data.relative_efficiency.max()*1.3))
-    for axis in axes: axis.grid(axis="y", alpha=.2)
-    fig.supxlabel("Efficiency = 1 / (empirical variance × median runtime). Timings exclude CRR; machine/load dependent.", fontsize=9)
-    save(fig, output, "variance_and_efficiency")
-
-
-def table2_plot(pairs, summary, output):
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5.6), layout="constrained")
-    fig.suptitle("In-sample and independent valuation of the same fitted AV-LSM policy", fontsize=14, weight="bold")
-    labels = []
-    for i, (key, group) in enumerate(pairs.groupby(KEYS, sort=True)):
-        labels.append(f"{int(key[0])}/{int(100*key[1])}/{int(key[2])}")
-        row = summary[(summary.spot == key[0]) & (summary.volatility == key[1]) & (summary.maturity == key[2])].iloc[0]
-        axes[0].scatter(i+np.linspace(-.10,.10,len(group)), group.difference_in_minus_out, color="#00857d", alpha=.6,
-                        label="Individual differences" if i == 0 else None)
-        axes[0].errorbar(i, row.mean_difference, yerr=row.difference_sd, fmt="D", capsize=3, color="#263b57",
-                         label="Mean ± SD across five runs" if i == 0 else None)
-        for offset, mode, color in ((-.12,"in","#bd6026"),(.12,"out","#00857d")):
-            axes[1].errorbar(i+offset, row["mean_error_"+mode], yerr=row["sd_"+mode], fmt="o", capsize=3, color=color,
-                            label=("In-sample" if mode == "in" else "Out-of-sample") if i == 0 else None)
-    axes[0].set(title="Paired in-sample minus out-of-sample differences", ylabel="Price difference")
-    axes[1].set(title="Mean pricing error against matched-date CRR", ylabel="Mean error ± SD across five runs")
+def table2_plot(pairs,summary,output):
+    fig,axes=plt.subplots(1,2,figsize=(13,6.3),sharey=True,layout="constrained")
+    fig.suptitle("Table 2: in-sample versus out-of-sample")
+    labels=[]
+    for i,(key,group) in enumerate(pairs.groupby(KEYS,sort=True)):
+        labels.append(f"S={int(key[0])}, σ={key[1]:.0%}, T={int(key[2])}y")
+        row=summary[(summary.spot==key[0])&(summary.volatility==key[1])&(summary.maturity==key[2])].iloc[0]
+        halfwidth=T_975_DF4*row.se_of_mean_difference
+        axes[0].scatter(group.difference_in_minus_out,i+np.linspace(-.10,.10,len(group)),color="#00857d",s=23,alpha=.5,
+                        label="Individual paired differences" if i==0 else None)
+        axes[0].errorbar(row.mean_difference,i,xerr=halfwidth,fmt="D",capsize=4,color="#263b57",
+                         label="Paired mean and 95% CI" if i==0 else None)
+        for offset,mode,color in ((-.12,"in","#bd6026"),(.12,"out","#00857d")):
+            halfwidth=T_975_DF4*row["sd_"+mode]/np.sqrt(row.runs)
+            axes[1].errorbar(row["mean_error_"+mode],i+offset,xerr=halfwidth,fmt="o",capsize=4,color=color,
+                            label=("In-sample" if mode=="in" else "Out-of-sample") if i==0 else None)
+    axes[0].set(title="Paired mean difference (95% CI)",xlabel="In-sample − out-of-sample")
+    axes[1].set(title="Mean error against grid-matched CRR (95% CI)",xlabel="Estimate − reference")
     for axis in axes:
-        axis.axhline(0, color="#526273", ls="--"); axis.set_xticks(range(8), labels, rotation=45)
-        axis.set_xlabel("Stock price / volatility (%) / maturity (years)"); axis.grid(axis="y", alpha=.2); axis.legend(fontsize=8)
-    fig.supxlabel("Each sample has 100000 paths. Whiskers show SD across five independent fits, not confidence intervals.", fontsize=9)
-    save(fig, output, "in_sample_out_of_sample")
+        axis.axvline(0,color="#526273",ls="--"); axis.grid(axis="x",alpha=.2)
+        axis.legend(fontsize=8,loc="upper center",bbox_to_anchor=(.5,-.14),ncol=2)
+        axis.set_yticks(range(8),labels,fontsize=9); axis.set_ylim(7.6,-.6)
+    fig.supxlabel("American puts; K = 40; r = 6%; 50 exercise dates/year plus t = 0.\n"
+                  "AV-LSM: 100,000 training paths and 100,000 independent evaluation paths. Pointwise 95% Student-t intervals across five seeds (df = 4).\n"
+                  "Intervals assume approximately normal run estimates/differences; no adjustment for comparing eight contracts.",fontsize=8.5)
+    save(fig,output,"in_sample_out_of_sample")
 
 
-def analyze(output_dir=None, complete=False, build_dir=ROOT / "build", workers=2, audit_only=False):
-    frames, audit = audit_existing_results()
-    supplement = DEFAULT_ANALYSIS / "new_plain_runs.csv"
-    if supplement.exists(): verify_supplement(supplement)
-    runs = existing_convergence_runs(frames, audit["matched_crr_atm"], supplement if supplement.exists() else None)
-    missing = missing_convergence_keys(runs)
-    audit["missing_runs"] = len(missing)
-    if audit_only:
-        print(json.dumps(audit, indent=2)); return
-    if missing and not complete:
-        raise ValueError(f"Missing {len(missing)} convergence runs. Use --complete-missing; full budgets and 30 seeds are retained.")
-    output = prepare_results("lsm_analysis", output_dir, False)
-    if missing:
-        supplement = complete_missing(missing, build_dir, output, workers)
-        verify_supplement(supplement)
-        runs = existing_convergence_runs(frames, audit["matched_crr_atm"], supplement)
-    if missing_convergence_keys(runs): raise ValueError("Convergence data remain incomplete.")
-    tables = build_tables(frames, runs, audit["matched_crr_atm"])
-    for name, frame in tables.items(): write_rows(output / f"{name}.csv", frame.to_dict("records"))
-    (output / "audit.json").write_text(json.dumps(audit, indent=2) + "\n", encoding="utf-8")
-    summary = {"new_experiment_runs": len(missing), "reused_convergence_runs": 300-len(missing),
-               "total_convergence_runs": len(runs),
-               "standardized_threshold_counts": {method: {"published_outside_1_96": int((group.z_published.abs()>1.96).sum()),
-                                                          "crr_outside_1_96": int((group.z_crr.abs()>1.96).sum())}
-                   for method, group in tables["pricing_errors"].groupby("sampling_method")},
-               "convergence": tables["convergence_summary"].to_dict("records"),
-               "variance_reduction": tables["variance_reduction"].to_dict("records"),
-               "efficiency": tables["efficiency"].to_dict("records"),
-               "table2_mean_difference": tables["table2_pairs"].difference_in_minus_out.mean(),
-               "table2_max_absolute_difference": tables["table2_pairs"].difference_in_minus_out.abs().max()}
-    (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
-    inputs = dict(audit["inputs_sha256"])
-    if supplement.exists(): inputs[supplement.relative_to(ROOT).as_posix()] = sha256(supplement)
-    manifest = {"profile":"full", "generated_at_utc":datetime.now(timezone.utc).isoformat(),
-                "inputs_sha256":inputs, "source_audit":audit["validation"], "path_counts":list(PATH_COUNTS),
-                "runs_per_method_per_budget":30, "new_runs":len(missing), "preserved_budgets":True,
-                "analysis_source_sha256":{name:sha256(ROOT/name) for name in ("scripts/analyze_lsm.py","scripts/lsm_statistics.py")},
-                "limitations":["In-sample SEs are approximate.", "Published SE convention is unreported; standardized thresholds are descriptive.",
-                    "CRR has discretization error; RMSE includes policy bias and sampling error.",
-                    "Thirty-run SDs and variance ratios are uncertain.", "Efficiency is machine/load dependent and uses only same-build 100000-path timings.",
-                    "Table 2 has five seeds per contract and paired policy dependence; its SD whiskers are not confidence intervals."]}
-    (output / "manifest.json").write_text(json.dumps(manifest, indent=2)+"\n",encoding="utf-8")
-    _, figures = plot_locations("lsm_analysis", output)
-    plt.rcParams.update({"font.size":10,"svg.hashsalt":"lsm-statistical-review"})
-    error_plots(tables["pricing_errors"], figures)
-    convergence_plots(tables["convergence_summary"], figures, audit["matched_crr_atm"])
-    calibration_plot(tables["convergence_summary"], figures)
-    efficiency_plot(tables["variance_reduction"], tables["efficiency"], figures)
-    table2_plot(tables["table2_pairs"], tables["table2_summary"], figures)
-    print(f"Reused {300-len(missing)} convergence runs; executed {len(missing)} missing runs. Saved six figures to {figures}.")
+def render(tables,output):
+    style()
+    errors=tables["pricing_errors"]
+    reference=float(tables["sampling_runs"].comparison_reference_crr.iloc[0])
+    error_plots(errors,output)
+    sampling_plot(tables["sampling_runs"],reference,output)
+    calibration_plot(tables["sampling_summary"],output)
+    efficiency_plot(tables["variance_reduction"],tables["efficiency"],output)
+    table2_plot(tables["table2_pairs"],tables["table2_summary"],output)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
+def analyze(output_dir=None,audit_only=False,figures_only=False):
+    if figures_only:
+        output=Path(output_dir or DEFAULT_ANALYSIS)
+        manifest=json.loads((output/"manifest.json").read_text())
+        for name,digest in manifest["inputs_sha256"].items():
+            if sha256(ROOT/name)!=digest: raise ValueError("A source CSV changed; recompute statistical summaries in a fresh directory.")
+        tables={name:pd.read_csv(output/f"{name}.csv",float_precision="round_trip") for name in TABLE_NAMES}
+    else:
+        frames,audit=audit_existing_results()
+        runs=existing_convergence_runs(frames,audit["matched_crr_atm"])
+        missing=missing_convergence_keys(runs)
+        audit.update(missing_convergence_runs=len(missing),simulations_run=0,crr_calculations_run=0)
+        if audit_only:
+            print(json.dumps(audit,indent=2)); return
+        output=prepare_results("lsm_analysis",output_dir,False)
+        tables=build_tables(frames,runs,audit["matched_crr_atm"],missing)
+        for name,frame in tables.items(): frame.to_csv(output/f"{name}.csv",index=False,float_format="%.17g")
+        (output/"audit.json").write_text(json.dumps(audit,indent=2)+"\n",encoding="utf-8")
+        summary={"simulations_run":0,"crr_calculations_run":0,"reused_convergence_runs":len(runs),"missing_convergence_runs":len(missing),
+            "standardized_threshold_counts":{method:{"published_outside_1_96":int((group.z_published.abs()>1.96).sum()),
+                "crr_outside_1_96":int((group.z_crr.abs()>1.96).sum())} for method,group in tables["pricing_errors"].groupby("sampling_method")},
+            "variance_reduction":tables["variance_reduction"].to_dict("records"),"efficiency":tables["efficiency"].to_dict("records"),
+            "table2_mean_difference":tables["table2_pairs"].difference_in_minus_out.mean(),
+            "table2_intervals_excluding_zero":int(((tables["table2_summary"].difference_ci_lower>0)|(tables["table2_summary"].difference_ci_upper<0)).sum())}
+        (output/"summary.json").write_text(json.dumps(summary,indent=2)+"\n",encoding="utf-8")
+        manifest={"profile":"full","analysis_only":True,"generated_at_utc":datetime.now(timezone.utc).isoformat(),
+            "inputs_sha256":{**audit["inputs_sha256"],**audit["manifest_sha256"]},
+            "analysis_source_sha256":{name:sha256(ROOT/name) for name in ("scripts/analyze_lsm.py","scripts/lsm_statistics.py")},
+            "simulations_run":0,"crr_calculations_run":0,"missing_convergence_runs":len(missing),
+            "limitations":["In-sample SEs are approximate; published SE convention is unreported.",
+                "The ±1.96 reference thresholds are descriptive, not simultaneous confidence tests.",
+                "Table 2 intervals are pointwise paired Student-t intervals (df=4), assuming normal run differences; five seeds give limited precision.",
+                "Shared seeds correlate contract comparisons; no multiple-comparison adjustment is applied.",
+                "CRR retains numerical discretization error.","Runtime efficiency uses only same-build saved 100000-path timings and is machine/load dependent.",
+                "Plain-LSM replicates at 5000,10000,25000,50000 paths are missing and are not generated."]}
+        (output/"manifest.json").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")
+    _,figure_dir=plot_locations("lsm_analysis",output)
+    render(tables,figure_dir)
+    print(f"Saved six figure pairs using existing CSVs only: {figure_dir}")
+
+
+if __name__=="__main__":
+    parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir",type=Path)
-    parser.add_argument("--complete-missing",action="store_true")
     parser.add_argument("--audit-only",action="store_true")
-    parser.add_argument("--build-dir",type=Path,default=ROOT/"build")
-    parser.add_argument("--workers",type=int,default=2)
+    parser.add_argument("--figures-only",action="store_true",help="Redraw the saved statistical summaries without recalculating them.")
     args=parser.parse_args()
     try:
-        if args.workers < 1: raise ValueError("Need at least one worker.")
-        analyze(args.output_dir,args.complete_missing,args.build_dir.resolve(),args.workers,args.audit_only)
+        analyze(args.output_dir,args.audit_only,args.figures_only)
     except (ValueError,RuntimeError,OSError) as error:
         parser.exit(1,str(error)+"\n")

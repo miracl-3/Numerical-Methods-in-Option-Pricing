@@ -1,0 +1,77 @@
+{
+  "profile": "full",
+  "row_counts": {
+    "paper_table": 20,
+    "paper_convergence": 150,
+    "control_table": 40,
+    "control_runs": 60,
+    "table2": 80,
+    "published_table1": 20,
+    "published_table2": 40
+  },
+  "path_counts": [
+    5000,
+    10000,
+    25000,
+    50000,
+    100000
+  ],
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71
+  ],
+  "matched_crr_atm": 2.3140663251464497,
+  "crr_reference_steps": 100000,
+  "max_av_table_overlap_difference": 1.7763568394002505e-15,
+  "max_av_repeat_overlap_difference": 8.881784197001252e-16,
+  "reference_format_notes": [
+    "table1.csv: Windows line endings; LF-normalized checksum matches the recorded source.",
+    "table2.csv: Windows line endings; LF-normalized checksum matches the recorded source."
+  ],
+  "validation": "Read-only CSV/manifest checks: full budgets, valuation modes, sampling methods, published-table hashes and consistent overlapping AV estimates. No pricing code, executables or environment checks are run.",
+  "runtime_scope": "Use only the same-build 100000-path controlled replicates for runtime efficiency; older AV convergence timings are not compared with new plain timings.",
+  "inputs_sha256": {
+    "data/experiments/paper_replication/full/lsm_paper_table.csv": "f0256fdff666b1d063daf769e6f4504cdeae71b6792962f93196243eaf9e3b07",
+    "data/experiments/paper_replication/full/lsm_paper_convergence.csv": "ee67d6b9c5183f3be89206c7deb1a1b208236511e8a0f374a22835620f6a28a8",
+    "data/experiments/lsm_comparison/full/table1.csv": "059fda3a49956946e62d0b95839d55684467e0871b04130abdc802b66a1c77eb",
+    "data/experiments/lsm_comparison/full/replicates.csv": "35309b5aa7536ae9813e366fd8fa607d7fd151ebf84c7edc9fe0069fd56696dc",
+    "data/experiments/lsm_comparison/full/table2.csv": "778b194ae63d1ea4f56b6efe9f6b1ea74d0513d4c0fa4e7577a14dcfba64e502",
+    "data/reference/longstaff_schwartz_2001/table1.csv": "a29ab1e9c45969084872a9ade3a3eca1cdbf8835523f12c64a044c6dff99028a",
+    "data/reference/longstaff_schwartz_2001/table2.csv": "c406895af2fa33c6f1641e73101a043362aa350d41cb6f2f51bf04dc71627745"
+  },
+  "manifest_sha256": {
+    "data/experiments/paper_replication/full/lsm_paper_manifest.json": "f1e90404ef46b83d2c830079f9ecfcc25cc12bc6e5bd054d30d91759ad661530",
+    "data/experiments/lsm_comparison/full/manifest.json": "fff9031a777c11bb7765c670f4077670258a172d26d3fae6f233d2d5ee793e45"
+  },
+  "missing_convergence_runs": 120,
+  "simulations_run": 0,
+  "crr_calculations_run": 0
+}

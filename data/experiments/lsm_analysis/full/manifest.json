@@ -1,0 +1,32 @@
+{
+  "profile": "full",
+  "analysis_only": true,
+  "generated_at_utc": "2026-11-25T18:26:58.937599+00:00",
+  "inputs_sha256": {
+    "data/experiments/paper_replication/full/lsm_paper_table.csv": "f0256fdff666b1d063daf769e6f4504cdeae71b6792962f93196243eaf9e3b07",
+    "data/experiments/paper_replication/full/lsm_paper_convergence.csv": "ee67d6b9c5183f3be89206c7deb1a1b208236511e8a0f374a22835620f6a28a8",
+    "data/experiments/lsm_comparison/full/table1.csv": "059fda3a49956946e62d0b95839d55684467e0871b04130abdc802b66a1c77eb",
+    "data/experiments/lsm_comparison/full/replicates.csv": "35309b5aa7536ae9813e366fd8fa607d7fd151ebf84c7edc9fe0069fd56696dc",
+    "data/experiments/lsm_comparison/full/table2.csv": "778b194ae63d1ea4f56b6efe9f6b1ea74d0513d4c0fa4e7577a14dcfba64e502",
+    "data/reference/longstaff_schwartz_2001/table1.csv": "a29ab1e9c45969084872a9ade3a3eca1cdbf8835523f12c64a044c6dff99028a",
+    "data/reference/longstaff_schwartz_2001/table2.csv": "c406895af2fa33c6f1641e73101a043362aa350d41cb6f2f51bf04dc71627745",
+    "data/experiments/paper_replication/full/lsm_paper_manifest.json": "f1e90404ef46b83d2c830079f9ecfcc25cc12bc6e5bd054d30d91759ad661530",
+    "data/experiments/lsm_comparison/full/manifest.json": "fff9031a777c11bb7765c670f4077670258a172d26d3fae6f233d2d5ee793e45"
+  },
+  "analysis_source_sha256": {
+    "scripts/analyze_lsm.py": "d57b3d6be7f6c6042b59b2902e01ff64be780ad22051c5e16cefefeef3c1bb3b",
+    "scripts/lsm_statistics.py": "208031a096d16c00a6589e2f81b6fadecdb887fddef2ecbe3ddff1df312cc189"
+  },
+  "simulations_run": 0,
+  "crr_calculations_run": 0,
+  "missing_convergence_runs": 120,
+  "limitations": [
+    "In-sample SEs are approximate; published SE convention is unreported.",
+    "The \u00b11.96 reference thresholds are descriptive, not simultaneous confidence tests.",
+    "Table 2 intervals are pointwise paired Student-t intervals (df=4), assuming normal run differences; five seeds give limited precision.",
+    "Shared seeds correlate contract comparisons; no multiple-comparison adjustment is applied.",
+    "CRR retains numerical discretization error.",
+    "Runtime efficiency uses only same-build saved 100000-path timings and is machine/load dependent.",
+    "Plain-LSM replicates at 5000,10000,25000,50000 paths are missing and are not generated."
+  ]
+}

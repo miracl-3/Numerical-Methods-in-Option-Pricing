@@ -1,0 +1,16 @@
+{
+  "source_and_analysis_hashes_match": true,
+  "pricing_discrepancy_rows_checked": 40,
+  "paired_mean_intervals_checked": 8,
+  "png_svg_pairs_checked": 6,
+  "manual_visual_review": [
+    "signed_pricing_errors",
+    "standardized_differences",
+    "in_sample_out_of_sample",
+    "sampling_variability",
+    "standard_error_calibration",
+    "variance_and_efficiency"
+  ],
+  "missing_runs": 120,
+  "scope": "Figure artifacts and saved-statistic arithmetic only; no pricing code or test suites invoked."
+}
