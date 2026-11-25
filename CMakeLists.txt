@@ -18,13 +18,23 @@ foreach(method IN LISTS PRICING_METHODS)
 endforeach()
 
 include(CTest)
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+    add_custom_target(reproducibility_metadata ALL
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/build.py --record-only
+            --compiler ${CMAKE_CXX_COMPILER} --build-dir $<TARGET_FILE_DIR:binomial_american>
+        DEPENDS ${PRICING_METHODS}
+        VERBATIM)
+endif()
 if(BUILD_TESTING)
-    find_package(Python3 COMPONENTS Interpreter)
     if(Python3_Interpreter_FOUND)
         add_test(NAME numerical_validation
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_pricing.py
                 --build-dir $<TARGET_FILE_DIR:binomial_european>)
         add_test(NAME original_lsm_procedure
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_lsm_procedure.py)
+        add_test(NAME research_file_management
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_experiment_files.py
+                --build-dir $<TARGET_FILE_DIR:binomial_american>)
     endif()
 endif()

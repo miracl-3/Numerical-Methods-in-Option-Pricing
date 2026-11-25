@@ -19,6 +19,19 @@ def executable(name, build_dir=ROOT / "build"):
     return Path(build_dir) / (name + (".exe" if sys.platform == "win32" else ""))
 
 
+def record_metadata(compiler, build_dir, optimization):
+    version = subprocess.run([str(compiler), "--version"], capture_output=True, text=True)
+    description = (version.stdout or version.stderr).splitlines()
+    sources = sorted((ROOT / "src").glob("*.cpp")) + sorted((ROOT / "include").glob("*.hpp"))
+    metadata = {"compiler": description[0] if description else str(compiler),
+                "cpp_standard": "c++17", "optimization": optimization,
+                "source_sha256": {p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                                  for p in sources},
+                "binary_sha256": {name: hashlib.sha256(executable(name, build_dir).read_bytes()).hexdigest()
+                                  for name in METHODS}}
+    (Path(build_dir) / "build_metadata.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+
+
 def build(compiler=None, build_dir=ROOT / "build", debug=False):
     compiler = compiler or shutil.which("g++") or shutil.which("clang++")
     if not compiler:
@@ -33,13 +46,7 @@ def build(compiler=None, build_dir=ROOT / "build", debug=False):
             command.insert(2, "-g")
         subprocess.run(command, cwd=ROOT, check=True)
         print(f"Built {name}", flush=True)
-    version = subprocess.run([str(compiler), "--version"], capture_output=True, text=True, check=True)
-    sources = sorted((ROOT / "src").glob("*.cpp")) + sorted((ROOT / "include").glob("*.hpp"))
-    metadata = {"compiler": version.stdout.splitlines()[0], "cpp_standard": "c++17",
-                "optimization": "-O0 -g" if debug else "-O2",
-                "source_sha256": {path.relative_to(ROOT).as_posix():
-                                  hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}}
-    (build_dir / "build_metadata.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    record_metadata(compiler, build_dir, "-O0 -g" if debug else "-O2")
 
 
 if __name__ == "__main__":
@@ -47,8 +54,13 @@ if __name__ == "__main__":
     parser.add_argument("--compiler")
     parser.add_argument("--build-dir", type=Path, default=ROOT / "build")
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--record-only", action="store_true", help="CMake post-build metadata; does not compile.")
+    parser.add_argument("--optimization", default="CMake-selected")
     args = parser.parse_args()
     try:
-        build(args.compiler, args.build_dir, args.debug)
+        if args.record_only:
+            record_metadata(args.compiler, args.build_dir, args.optimization)
+        else:
+            build(args.compiler, args.build_dir, args.debug)
     except (RuntimeError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"{error}\n")

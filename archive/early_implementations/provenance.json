@@ -1,0 +1,270 @@
+{
+  "snapshots": [
+    {
+      "original_local_zip": ".local-archive/before-cleanup-20261018-230645.zip",
+      "zip_sha256": "c5a5cbca440ff7ea8fba7aa8b03db7bc582503887b6da7ea3bcce1b3cb6cd66f",
+      "directory": "before-cleanup-20261018-230645",
+      "note": "Nonbinary historical files preserved exactly; original ZIP retained locally.",
+      "files": [
+        {
+          "file": "src/american_option.cpp",
+          "sha256": "72ec5565ba931b38a4033c130f6f6f60662a234ad3754c2b109e8a265f10b893",
+          "bytes": 5105
+        },
+        {
+          "file": "src/antithetic_variates.cpp",
+          "sha256": "875ed5dbf7c3b4eac047a97fbecf065d18780a9a5c1b15559b4534d5aa42493a",
+          "bytes": 8260
+        },
+        {
+          "file": "src/black_scholes_european_option.cpp",
+          "sha256": "15ca6caff5183a1562c18569dcbb206d5559701cbd4bc67c7711b8be982fe8a7",
+          "bytes": 2491
+        },
+        {
+          "file": "src/control_variates.cpp",
+          "sha256": "842dd6d2d12ed3569d256b9005cec52fdd2a9bf828cb8b020b4c7a1eabd29ada",
+          "bytes": 8704
+        },
+        {
+          "file": "src/importance_sampling.cpp",
+          "sha256": "ef8b06c5cd4e208e368c0fedd66f5f29dd548468f74e8c22f621fa6e2a307c0c",
+          "bytes": 14059
+        },
+        {
+          "file": "src/learn.cpp",
+          "sha256": "81b0aad4a6370976e47a28590a8e23c0d36828b0ee15b901b6ee5863a0e47a5f",
+          "bytes": 602
+        },
+        {
+          "file": "src/main.cpp",
+          "sha256": "5570305b0e044988a277b7134d27a27c329557cd2cebb6efa28449985df38b81",
+          "bytes": 23097
+        },
+        {
+          "file": "src/monte_carlo_european_option.cpp",
+          "sha256": "8b13eb7a3f4494822bd5aa10f518b08601f75e86fcd24938f6821597e4041b24",
+          "bytes": 3546
+        },
+        {
+          "file": "src/regression.cpp",
+          "sha256": "df03f12946f4bed703ce34f1ef4059ef5c50ad18a7b7656cbbe55cd8d324539a",
+          "bytes": 15341
+        },
+        {
+          "file": "src/tempCodeRunnerFile.cpp",
+          "sha256": "a58a485d28529e4eae3f76a721201fcc382056198b44dcbff18b1919e6daaeb7",
+          "bytes": 14
+        },
+        {
+          "file": "include/black_scholes.hpp",
+          "sha256": "f51f40a6dc58153b21cf3c70caf526cadefb94db5585b78cebf84c961de761b6",
+          "bytes": 1370
+        },
+        {
+          "file": "include/monte_carlo.hpp",
+          "sha256": "7995fe7e8ecbae4e2d7d36fbd9468de926f91d8af08fd2f2b28822c5e8646abd",
+          "bytes": 3086
+        },
+        {
+          "file": ".vscode/c_cpp_properties.json",
+          "sha256": "64f364a2dd74b34de6ac3b38caa415239ed9ef71e5050374968d414ef7136757",
+          "bytes": 557
+        },
+        {
+          "file": ".vscode/launch.json",
+          "sha256": "290099c50e310f92b2aa246e64d4187e0d573bd91b33243819c50573d894c975",
+          "bytes": 706
+        },
+        {
+          "file": ".vscode/settings.json",
+          "sha256": "a50c36fdb4afab92e08b810175ef90092d0443bbd1eb46f2a1245217375e1b90",
+          "bytes": 863
+        },
+        {
+          "file": ".vscode/tasks.json",
+          "sha256": "df6df1df6ab63d190e937595312695bd0fcc9f14739db02c7710046fd2e188bd",
+          "bytes": 2046
+        },
+        {
+          "file": "requirements.txt",
+          "sha256": "2007646e7a4bdabe3d232e27ccfaedc234a62a1a05bb95cb69f99d95393ba16e",
+          "bytes": 235
+        },
+        {
+          "file": "README.md",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        }
+      ]
+    },
+    {
+      "original_local_zip": ".local-archive/before-newton-20261018-235011.zip",
+      "zip_sha256": "359afb83a1c33b8c1d73364b2b0680c08fb35e9e6c5a459dc74ffad9ee43434b",
+      "directory": "before-newton-20261018-235011",
+      "note": "Nonbinary historical files preserved exactly; original ZIP retained locally.",
+      "files": [
+        {
+          "file": "src/binomial_american.cpp",
+          "sha256": "3b80aa0d4990767396d57cd1b117427467fe7c1f03971def5cf0a1ebade47d7e",
+          "bytes": 681
+        },
+        {
+          "file": "src/binomial_european.cpp",
+          "sha256": "746a7b561e553f0fe23d214fe247b79fc0f9497cbb1001026da8af6ab50eef4f",
+          "bytes": 583
+        },
+        {
+          "file": "src/lsm_american.cpp",
+          "sha256": "635f296f26c3d9b1ec00500df6f66f57490f1ebabc94a679a6242d9dab564e48",
+          "bytes": 7582
+        },
+        {
+          "file": "src/monte_carlo_american.cpp",
+          "sha256": "75bca555d60932cee7746d6be66f777cb6f91cba6854c1da482cd385bb2ae7b0",
+          "bytes": 2569
+        },
+        {
+          "file": "src/monte_carlo_european.cpp",
+          "sha256": "13170c38f266a554d004a0c6cbd92c06b07fa3b4ed5766f59b9d3d276e651490",
+          "bytes": 1145
+        },
+        {
+          "file": "src/variance_reduction.cpp",
+          "sha256": "902e43f4c3dba504bc186030e9920704aea49fc1f67aeabf564a65a4dcc735ed",
+          "bytes": 5248
+        },
+        {
+          "file": "include/binomial.hpp",
+          "sha256": "01dd2ac3b513b38d1ee2eaf1ce8b8349fff22236051350bb1d61486e791bd028",
+          "bytes": 2411
+        },
+        {
+          "file": "include/experiment.hpp",
+          "sha256": "23970e6292524a6718983d8d354cded3481f3210778f74a313d680bf48530f23",
+          "bytes": 8035
+        },
+        {
+          "file": "include/model.hpp",
+          "sha256": "27e6e0b1cc251dbe000c9cf39ab7544013df6a038f765cc0103e4b14bcc01d1e",
+          "bytes": 4644
+        },
+        {
+          "file": "scripts/build.py",
+          "sha256": "e2b28b7db66da868400ca28f523facbe647dad8489c9d0b68f8b3b74255ecfcf",
+          "bytes": 2395
+        },
+        {
+          "file": "scripts/plot_results.py",
+          "sha256": "34b073a1594b4ef48e94b292780a192fd907b3790d505e946d386d711093d98d",
+          "bytes": 11145
+        },
+        {
+          "file": "scripts/run_experiments.py",
+          "sha256": "564e1ede05c0a64ceb2ccf22357ef6d448ba6c2f38d2a367f1f7e24ad1b86f94",
+          "bytes": 5198
+        },
+        {
+          "file": "scripts/verify_notebook.py",
+          "sha256": "5d66da920f0fd0dd5cdf79453bed3df67f533042ea9bb18982e644cb95387933",
+          "bytes": 2140
+        },
+        {
+          "file": "tests/test_pricing.py",
+          "sha256": "ff044befd5a7e9b8117f0a6b6b3155a06021978fe45750090e6db327b9d4049b",
+          "bytes": 9933
+        },
+        {
+          "file": "docs/methodology.md",
+          "sha256": "8d0b8563d82ca614b20b94eb7a7ef1ee6dc0921969dfeb3a7dedb4637fc56694",
+          "bytes": 9220
+        },
+        {
+          "file": "docs/quickstart.md",
+          "sha256": "404af6c220a39fd06577b96ecbfbbd9f8cdd390dbb1783606892a7e52637688d",
+          "bytes": 5788
+        },
+        {
+          "file": "notebooks/option_pricing.ipynb",
+          "sha256": "32e84be8d96126f77af50aa3d96700be93d68b5de1e3d7278f616f8bed07278a",
+          "bytes": 1320545
+        },
+        {
+          "file": "experiments/american_convergence.csv",
+          "sha256": "cc4f73e5b40968267de2d95ad38fa368faae377c00e40b07c4c6fc18d6db54c9",
+          "bytes": 5222
+        },
+        {
+          "file": "experiments/exercise_grid.csv",
+          "sha256": "90de1551ff345c1851fd06b8820799a6d47fa1f75e75a2525e85a8557ae7b1dd",
+          "bytes": 3629
+        },
+        {
+          "file": "experiments/manifest.json",
+          "sha256": "4326f1aa2f12bf317e22c02280e4773f61406fb133862c60324b779013e3dfc8",
+          "bytes": 2078
+        },
+        {
+          "file": "experiments/mc_convergence.csv",
+          "sha256": "63f92f44f9750605eecad140201559e421ef0212f0083c82ee2c2dc6a6b7922f",
+          "bytes": 6562
+        },
+        {
+          "file": "experiments/tree_convergence.csv",
+          "sha256": "d6b40d0c6fe80db3968dd9165b3df29c6c59db6fe963d92523bdc03239481f88",
+          "bytes": 6913
+        },
+        {
+          "file": "experiments/variance_reduction.csv",
+          "sha256": "40707a59d5f921b705839bdb3a2811f9e1a14b62ce8c78eb843f28cbb647d03c",
+          "bytes": 25868
+        },
+        {
+          "file": "figures/binomial_tree.png",
+          "sha256": "91921871634511eb9de6498d3e2536ca6496db2cb94eb8a1995b866ca1b8774b",
+          "bytes": 143142
+        },
+        {
+          "file": "figures/binomial_tree.svg",
+          "sha256": "de9ba2aa08efe488a38dfb73bda851bc22f29bb6b4fbaf5e8b1e3638cdf8a2f9",
+          "bytes": 71567
+        },
+        {
+          "file": "figures/convergence.png",
+          "sha256": "76e0f6e08b8e4e8157b1ad37735773e8737a95a3ea50b8cf16b4d1b7163617a9",
+          "bytes": 308468
+        },
+        {
+          "file": "figures/convergence.svg",
+          "sha256": "21ac258028dbf4579a1a043e39c536302adb922f4c505d6bb7208d12c5187c40",
+          "bytes": 146826
+        },
+        {
+          "file": "figures/lsm_exercise_grid.png",
+          "sha256": "665c5ad746fd5f25670de85355e7cacc483dcb385caab1a4bf878411e28a12e5",
+          "bytes": 180633
+        },
+        {
+          "file": "figures/lsm_exercise_grid.svg",
+          "sha256": "9f95e828464663f542ac5c51512d832f8580c417371345a31cfc0e0069297930",
+          "bytes": 79811
+        },
+        {
+          "file": "figures/variance_reduction.png",
+          "sha256": "11e7e08af0ee22f2674dfa0e29d3fa672f25d3be4fbb5392d0cede6540769dee",
+          "bytes": 333429
+        },
+        {
+          "file": "figures/variance_reduction.svg",
+          "sha256": "22293dcc5d5727e3c805467edc9e09e5d35064b6826e1589c9c0e84948826a89",
+          "bytes": 143867
+        },
+        {
+          "file": "README.md",
+          "sha256": "adca0e0380dee69fec3f2230a0990e57057e4cda5977191ed635db7b35ce69fc",
+          "bytes": 10869
+        }
+      ]
+    }
+  ]
+}

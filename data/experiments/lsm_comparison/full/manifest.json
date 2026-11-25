@@ -1,0 +1,92 @@
+{
+  "generated_at_utc": "2026-11-25T17:27:39.510443+00:00",
+  "paper_url": "https://www.kellogg.northwestern.edu/faculty/mcdonald/ftp/practicum/papers/longstaffschwartz.pdf",
+  "profile": "full",
+  "paths_per_sample": 100000,
+  "sampling_methods": [
+    "plain",
+    "antithetic"
+  ],
+  "basis": "constant + three weighted Laguerre functions of S/K",
+  "valuation": "in-sample comparison; Table 2 additionally freezes each fitted policy for independent evaluation",
+  "exercise_grid": "t=0 and 50 equally spaced dates/year including maturity, shared with CRR",
+  "atm_replicate_seeds": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71
+  ],
+  "table2_seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "workers": 2,
+  "reference_cache": "data/experiments/lsm_paper_table.csv",
+  "reference_cache_sha256": "f0256fdff666b1d063daf769e6f4504cdeae71b6792962f93196243eaf9e3b07",
+  "reference_note": "Existing C++ fine-tree results reused unchanged; C++ benchmark/reference_steps fields retain the cheaper local reference, comparison_reference_* identifies the cached fine reference.",
+  "binary_sha256": "1c6a361d4ce87a32c91ee5c97c3ec999529c4b4ef40c2d0d6c6b226631c63ff8",
+  "source_sha256": {
+    "src/binomial_american.cpp": "3b80aa0d4990767396d57cd1b117427467fe7c1f03971def5cf0a1ebade47d7e",
+    "src/binomial_european.cpp": "746a7b561e553f0fe23d214fe247b79fc0f9497cbb1001026da8af6ab50eef4f",
+    "src/lsm_american.cpp": "c918cfd934aa2aeaca93b23fe453971192c5ecc3d17f0c970a8a75ffecb1a233",
+    "src/monte_carlo_american.cpp": "75bca555d60932cee7746d6be66f777cb6f91cba6854c1da482cd385bb2ae7b0",
+    "src/monte_carlo_european.cpp": "13170c38f266a554d004a0c6cbd92c06b07fa3b4ed5766f59b9d3d276e651490",
+    "src/variance_reduction.cpp": "b0d7805d8b8a3d6aa68d37c9cc39fed5e542bccfa7f9f18170de7a1138f571cf",
+    "include/binomial.hpp": "b4dafc59c4dc940f8092b5027a9c3edb5bea3333d64d47ec7f06f3de65b9c395",
+    "include/experiment.hpp": "624d27d7e5e82e0225df1f8812ddb0b3b428289bc6c5b256b6284bffe0758b91",
+    "include/model.hpp": "69dcc072744b34d0117138bd835ea87c0bf8c6ce30ae042504eb8a416e63ed54"
+  },
+  "limitations": [
+    "In-sample plug-in SEs are approximate: the fitted policy couples cashflows.",
+    "Out-of-sample SEs condition on one frozen fitted policy.",
+    "Empirical variance factors from 30 replicates are noisy and contract-specific.",
+    "Shared master seeds partially couple plain/AV runs; the mean contrast uses paired differences across seeds.",
+    "Table 2 in/out values share fitted coefficients, so their SEs cannot simply be added in quadrature for an exact difference test.",
+    "Original RNG, seeds and SE formula are unreported; printed-seed rows cannot be matched exactly."
+  ],
+  "build": {
+    "compiler": "g++.EXE (Rev5, Built by MSYS2 project) 16.1.0",
+    "cpp_standard": "c++17",
+    "optimization": "-O2",
+    "source_sha256": {
+      "src/binomial_american.cpp": "3b80aa0d4990767396d57cd1b117427467fe7c1f03971def5cf0a1ebade47d7e",
+      "src/binomial_european.cpp": "746a7b561e553f0fe23d214fe247b79fc0f9497cbb1001026da8af6ab50eef4f",
+      "src/lsm_american.cpp": "c918cfd934aa2aeaca93b23fe453971192c5ecc3d17f0c970a8a75ffecb1a233",
+      "src/monte_carlo_american.cpp": "75bca555d60932cee7746d6be66f777cb6f91cba6854c1da482cd385bb2ae7b0",
+      "src/monte_carlo_european.cpp": "13170c38f266a554d004a0c6cbd92c06b07fa3b4ed5766f59b9d3d276e651490",
+      "src/variance_reduction.cpp": "b0d7805d8b8a3d6aa68d37c9cc39fed5e542bccfa7f9f18170de7a1138f571cf",
+      "include/binomial.hpp": "b4dafc59c4dc940f8092b5027a9c3edb5bea3333d64d47ec7f06f3de65b9c395",
+      "include/experiment.hpp": "624d27d7e5e82e0225df1f8812ddb0b3b428289bc6c5b256b6284bffe0758b91",
+      "include/model.hpp": "69dcc072744b34d0117138bd835ea87c0bf8c6ce30ae042504eb8a416e63ed54"
+    }
+  }
+}

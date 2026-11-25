@@ -1,0 +1,509 @@
+{
+  "date": "2026-11-26",
+  "files": [
+    {
+      "original": "README.md",
+      "current": "archive/organization_2026-11-26/documentation/README.md",
+      "sha256": "9485873196a4dd32c80d855aca720220ed0ab73d97653ee36ac7d79842658f35",
+      "bytes": 8254,
+      "action": "archived_copy",
+      "reason": "Preserve the pre-consolidation documentation"
+    },
+    {
+      "original": "docs/methodology.md",
+      "current": "archive/organization_2026-11-26/documentation/methodology.md",
+      "sha256": "f74bfd74e31c14f6d63927c42824b29a4175f75f928c98bc0a7c57f20fa5d0be",
+      "bytes": 19490,
+      "action": "archived_copy",
+      "reason": "Preserve the pre-consolidation documentation"
+    },
+    {
+      "original": "docs/quickstart.md",
+      "current": "archive/organization_2026-11-26/documentation/quickstart.md",
+      "sha256": "18a7bcc15ca883771eff3acc130521bac79d09987317573df1167a27a244a865",
+      "bytes": 6645,
+      "action": "moved",
+      "reason": "Superseded active guide; useful content merged into README/methodology"
+    },
+    {
+      "original": "docs/lsm_implementation.md",
+      "current": "archive/organization_2026-11-26/documentation/lsm_implementation.md",
+      "sha256": "6288f963d63522b951042941557642b29cbf3b9a2c81cde7373a336f48a59804",
+      "bytes": 11592,
+      "action": "moved",
+      "reason": "Superseded active guide; useful content merged into README/methodology"
+    },
+    {
+      "original": "docs/lsm_benchmark.md",
+      "current": "docs/results/paper_replication.md",
+      "sha256": "ac80b50467d5ba74c1dd6d4a1537c8becf6ecc72dccce50bb75ef5728ac7c658",
+      "bytes": 6222,
+      "action": "moved",
+      "reason": "Separate the original-paper research report"
+    },
+    {
+      "original": "docs/lsm_comparison.md",
+      "current": "docs/results/lsm_comparison.md",
+      "sha256": "e4d000f92fd759bd588d4d1902bf83feae162477507dee85c5bbb64b956cd8db",
+      "bytes": 7537,
+      "action": "moved",
+      "reason": "Separate the controlled plain/AV research report"
+    },
+    {
+      "original": "docs/cv_thesis.tex",
+      "current": "archive/organization_2026-11-26/supporting/cv_thesis.tex",
+      "sha256": "ad6450a16b901c6fd26db8624bf2f71ed9bf5d0455de7bf04e0fd6565469e919",
+      "bytes": 1398,
+      "action": "moved",
+      "reason": "Application/CV text, not the thesis methodology"
+    },
+    {
+      "original": "data/experiments/lsm_paper_convergence.csv",
+      "current": "data/experiments/paper_replication/full/lsm_paper_convergence.csv",
+      "sha256": "ee67d6b9c5183f3be89206c7deb1a1b208236511e8a0f374a22835620f6a28a8",
+      "bytes": 84525,
+      "action": "moved",
+      "reason": "Original-paper replication outputs"
+    },
+    {
+      "original": "data/experiments/lsm_paper_manifest.json",
+      "current": "data/experiments/paper_replication/full/lsm_paper_manifest.json",
+      "sha256": "f1e90404ef46b83d2c830079f9ecfcc25cc12bc6e5bd054d30d91759ad661530",
+      "bytes": 5134,
+      "action": "moved",
+      "reason": "Original-paper replication outputs"
+    },
+    {
+      "original": "data/experiments/lsm_paper_se_summary.csv",
+      "current": "data/experiments/paper_replication/full/lsm_paper_se_summary.csv",
+      "sha256": "8707407f8d1a3cd6c18344f241edd204a093787dc8f1c6653f7ce25cae584f69",
+      "bytes": 1190,
+      "action": "moved",
+      "reason": "Original-paper replication outputs"
+    },
+    {
+      "original": "data/experiments/lsm_paper_summary.json",
+      "current": "data/experiments/paper_replication/full/lsm_paper_summary.json",
+      "sha256": "94d57363934633d87eac409c87415039d4a9f43b1b91f9a6c5cceefc6ac0d507",
+      "bytes": 1963,
+      "action": "moved",
+      "reason": "Original-paper replication outputs"
+    },
+    {
+      "original": "data/experiments/lsm_paper_table.csv",
+      "current": "data/experiments/paper_replication/full/lsm_paper_table.csv",
+      "sha256": "f0256fdff666b1d063daf769e6f4504cdeae71b6792962f93196243eaf9e3b07",
+      "bytes": 12262,
+      "action": "moved",
+      "reason": "Original-paper replication outputs"
+    },
+    {
+      "original": "data/experiments/lsm_comparison/example/example_cashflows.csv",
+      "current": "data/experiments/lsm_comparison/full/example/example_cashflows.csv",
+      "sha256": "fcf147693069a0e3bf06f7569123c0541e18f90833f337c39b2dcf5858b77bd6",
+      "bytes": 297,
+      "action": "moved",
+      "reason": "Controlled plain/AV experiment outputs"
+    },
+    {
+      "original": "data/experiments/lsm_comparison/example/example_coefficients_monetary.csv",
+      "current": "data/experiments/lsm_comparison/full/example/example_coefficients_monetary.csv",
+      "sha256": "d79924d56ea9ace83ea4fc39e4d79d2877db32dc112e003536853f2cc1965182",
+      "bytes": 163,
+      "action": "moved",
+      "reason": "Controlled plain/AV experiment outputs"
+    },
+    {
+      "original": "data/experiments/lsm_comparison/example/example_decisions.csv",
+      "current": "data/experiments/lsm_comparison/full/example/example_decisions.csv",
+      "sha256": "6a41c3f549cb544530c3686094f6538a86b13f275b1cba477ae09365ab09b2f1",
+      "bytes": 2008,
+      "action": "moved",
+      "reason": "Controlled plain/AV experiment outputs"
+    },
+    {
+      "original": "data/experiments/lsm_comparison/example/example_regressions.csv",
+      "current": "data/experiments/lsm_comparison/full/example/example_regressions.csv",
+      "sha256": "3432b25d4462bb2d07379f74d8f1256e1c933845a40fc1d9e407415c390e9809",
+      "bytes": 517,
+      "action": "moved",
+      "reason": "Controlled plain/AV experiment outputs"
+    },
+    {
+      "original": "data/experiments/lsm_comparison/manifest.json",
+      "current": "data/experiments/lsm_comparison/full/manifest.json",
+      "sha256": "fff9031a777c11bb7765c670f4077670258a172d26d3fae6f233d2d5ee793e45",
+      "bytes": 4065,
+      "action": "moved",
+      "reason": "Controlled plain/AV experiment outputs"
+    },
+    {
+      "original": "data/experiments/lsm_comparison/regressions.csv",
+      "current": "data/experiments/lsm_comparison/full/regressions.csv",
+      "sha256": "5f6ce9adf719696ac603d2027fb6fc0f28e7ecdb766a083207de24125407e99b",
+      "bytes": 1972329,
+      "action": "moved",
+      "reason": "Controlled plain/AV experiment outputs"
+    },
+    {
+      "original": "data/experiments/lsm_comparison/replicates.csv",
+      "current": "data/experiments/lsm_comparison/full/replicates.csv",
+      "sha256": "35309b5aa7536ae9813e366fd8fa607d7fd151ebf84c7edc9fe0069fd56696dc",
+      "bytes": 48165,
+      "action": "moved",
+      "reason": "Controlled plain/AV experiment outputs"
+    },
+    {
+      "original": "data/experiments/lsm_comparison/summary.json",
+      "current": "data/experiments/lsm_comparison/full/summary.json",
+      "sha256": "d7d59507f160b92ea8298734bfd98b7437815c675e4cc1eb25bf05f4276a23eb",
+      "bytes": 2192,
+      "action": "moved",
+      "reason": "Controlled plain/AV experiment outputs"
+    },
+    {
+      "original": "data/experiments/lsm_comparison/table1.csv",
+      "current": "data/experiments/lsm_comparison/full/table1.csv",
+      "sha256": "059fda3a49956946e62d0b95839d55684467e0871b04130abdc802b66a1c77eb",
+      "bytes": 32307,
+      "action": "moved",
+      "reason": "Controlled plain/AV experiment outputs"
+    },
+    {
+      "original": "data/experiments/lsm_comparison/table2.csv",
+      "current": "data/experiments/lsm_comparison/full/table2.csv",
+      "sha256": "778b194ae63d1ea4f56b6efe9f6b1ea74d0513d4c0fa4e7577a14dcfba64e502",
+      "bytes": 65147,
+      "action": "moved",
+      "reason": "Controlled plain/AV experiment outputs"
+    },
+    {
+      "original": "data/experiments/american_convergence.csv",
+      "current": "data/experiments/pricing_methods/historical_quick/american_convergence.csv",
+      "sha256": "852628c92428a770b3ea57ffcae971977dbca3d663316966813cbe77ea4491a4",
+      "bytes": 5751,
+      "action": "moved",
+      "reason": "Preserve the historical broader quick study"
+    },
+    {
+      "original": "data/experiments/exercise_grid.csv",
+      "current": "data/experiments/pricing_methods/historical_quick/exercise_grid.csv",
+      "sha256": "d1d52295acfe57dd5bcbcd730ce4d53d938a22d1d43d8d8b82b70e42f90f569a",
+      "bytes": 4019,
+      "action": "moved",
+      "reason": "Preserve the historical broader quick study"
+    },
+    {
+      "original": "data/experiments/manifest.json",
+      "current": "data/experiments/pricing_methods/historical_quick/manifest.json",
+      "sha256": "80bf6985b52c00535df9a5bf7548039dd7b99023006f58d5960010bb8586d5dc",
+      "bytes": 2657,
+      "action": "moved",
+      "reason": "Preserve the historical broader quick study"
+    },
+    {
+      "original": "data/experiments/mc_convergence.csv",
+      "current": "data/experiments/pricing_methods/historical_quick/mc_convergence.csv",
+      "sha256": "374a1e4f44a408ab02863a0a28095c6beae054438324d3a35a4c44542d733ec4",
+      "bytes": 7247,
+      "action": "moved",
+      "reason": "Preserve the historical broader quick study"
+    },
+    {
+      "original": "data/experiments/newton_convergence.csv",
+      "current": "data/experiments/pricing_methods/historical_quick/newton_convergence.csv",
+      "sha256": "c898e94ef549003293360de284c876fe14ac9b71ef7023bf99a161159527e613",
+      "bytes": 7163,
+      "action": "moved",
+      "reason": "Preserve the historical broader quick study"
+    },
+    {
+      "original": "data/experiments/tree_convergence.csv",
+      "current": "data/experiments/pricing_methods/historical_quick/tree_convergence.csv",
+      "sha256": "8a11bd19518031b0d210d74b5682c0f9fe1e8dddb4cd302abba94b44fdaa7597",
+      "bytes": 7658,
+      "action": "moved",
+      "reason": "Preserve the historical broader quick study"
+    },
+    {
+      "original": "data/experiments/variance_reduction.csv",
+      "current": "data/experiments/pricing_methods/historical_quick/variance_reduction.csv",
+      "sha256": "c342ce0a4759725663fef2845ef29cb7f70f52e385b1226c19747cb6bbbde5cf",
+      "bytes": 29508,
+      "action": "moved",
+      "reason": "Preserve the historical broader quick study"
+    },
+    {
+      "original": "data/experiments/variance_summary.csv",
+      "current": "data/experiments/pricing_methods/historical_quick/variance_summary.csv",
+      "sha256": "5b47fdfd222ee1d559257d14aa9aa235f1326a4adfaad434315c204778933bcc",
+      "bytes": 1123,
+      "action": "moved",
+      "reason": "Preserve the historical broader quick study"
+    },
+    {
+      "original": "data/reference/longstaff_schwartz_table1.csv",
+      "current": "data/reference/longstaff_schwartz_2001/table1.csv",
+      "sha256": "c022ae18446c868322d996f272144880b1edb09f4ce871c6ec4094dcb938537f",
+      "bytes": 1612,
+      "action": "moved",
+      "reason": "One canonical published-reference bundle"
+    },
+    {
+      "original": "data/reference/longstaff_schwartz_table1_provenance.json",
+      "current": "archive/organization_2026-11-26/reference_provenance/table1.json",
+      "sha256": "bcc1824c972ba4ab3ece8d162be5fb548d46bc308878b05da134538ab75c9eca",
+      "bytes": 2622,
+      "action": "moved",
+      "reason": "Preserve original provenance records; canonical provenance.json consolidates them"
+    },
+    {
+      "original": "data/reference/longstaff_schwartz_table2.csv",
+      "current": "data/reference/longstaff_schwartz_2001/table2.csv",
+      "sha256": "5d7463edf345886a22580da6d57d999310023963ed4b231a8edf8cf3785a2424",
+      "bytes": 1819,
+      "action": "moved",
+      "reason": "One canonical published-reference bundle"
+    },
+    {
+      "original": "data/reference/longstaff_schwartz_table2_provenance.json",
+      "current": "archive/organization_2026-11-26/reference_provenance/table2.json",
+      "sha256": "66161dae3e9a3e9baa1e06f4df63963300fa3ad176e3d653cf5064050461817b",
+      "bytes": 1188,
+      "action": "moved",
+      "reason": "Preserve original provenance records; canonical provenance.json consolidates them"
+    },
+    {
+      "original": "figures/lsm_paper_convergence.png",
+      "current": "figures/paper_replication/full/lsm_paper_convergence.png",
+      "sha256": "557c0648ab0a1321ed61f016dbd010913b8b2cbfefbaf16dcd4011304504ec13",
+      "bytes": 170824,
+      "action": "moved",
+      "reason": "Figures for original-paper replication"
+    },
+    {
+      "original": "figures/lsm_paper_convergence.svg",
+      "current": "figures/paper_replication/full/lsm_paper_convergence.svg",
+      "sha256": "18c69182c59e230a65b1553a6ca4b07be685fd367781e76754a5867fcfbe2276",
+      "bytes": 123526,
+      "action": "moved",
+      "reason": "Figures for original-paper replication"
+    },
+    {
+      "original": "figures/lsm_paper_standard_errors.png",
+      "current": "figures/paper_replication/full/lsm_paper_standard_errors.png",
+      "sha256": "8fe2b84053380234f1cf1c683eb5205060b9b79f78cfe3ddb99c6a48940672cf",
+      "bytes": 226816,
+      "action": "moved",
+      "reason": "Figures for original-paper replication"
+    },
+    {
+      "original": "figures/lsm_paper_standard_errors.svg",
+      "current": "figures/paper_replication/full/lsm_paper_standard_errors.svg",
+      "sha256": "89f9534e483957a066b3bc64e5788ad66ad86456fcf45a509455517684bb94e7",
+      "bytes": 124065,
+      "action": "moved",
+      "reason": "Figures for original-paper replication"
+    },
+    {
+      "original": "figures/lsm_paper_table.png",
+      "current": "figures/paper_replication/full/lsm_paper_table.png",
+      "sha256": "5b5bb8cc95a1949499863791122f76b717a08cf35c7b629e3a1be1da73d18038",
+      "bytes": 236255,
+      "action": "moved",
+      "reason": "Figures for original-paper replication"
+    },
+    {
+      "original": "figures/lsm_paper_table.svg",
+      "current": "figures/paper_replication/full/lsm_paper_table.svg",
+      "sha256": "6d32517eb769154e50333c82e2e93a173a551f1de4e4c2b2ad1187b178008b0f",
+      "bytes": 138027,
+      "action": "moved",
+      "reason": "Figures for original-paper replication"
+    },
+    {
+      "original": "figures/lsm_comparison/sampling_variability.png",
+      "current": "figures/lsm_comparison/full/sampling_variability.png",
+      "sha256": "5e90493e65de5be9a08bbb7a58be2df9b0a448e44f583ea7430a1a82cbae489d",
+      "bytes": 191779,
+      "action": "moved",
+      "reason": "Figures for controlled plain/AV comparison"
+    },
+    {
+      "original": "figures/lsm_comparison/sampling_variability.svg",
+      "current": "figures/lsm_comparison/full/sampling_variability.svg",
+      "sha256": "1725108c5c7d1e688148fc5121239c37ffeca7a97122318bda4b3131273e08fe",
+      "bytes": 93968,
+      "action": "moved",
+      "reason": "Figures for controlled plain/AV comparison"
+    },
+    {
+      "original": "figures/lsm_comparison/table1_comparison.png",
+      "current": "figures/lsm_comparison/full/table1_comparison.png",
+      "sha256": "4cf1b1b180c73bc52805927423df228b6754d9118a5cda2d9ba9d9639e2d8c1f",
+      "bytes": 234876,
+      "action": "moved",
+      "reason": "Figures for controlled plain/AV comparison"
+    },
+    {
+      "original": "figures/lsm_comparison/table1_comparison.svg",
+      "current": "figures/lsm_comparison/full/table1_comparison.svg",
+      "sha256": "42173e128c9f8db03d218d7c89143c5afa53eeab918eb321ebc33d5390a2d4cf",
+      "bytes": 143276,
+      "action": "moved",
+      "reason": "Figures for controlled plain/AV comparison"
+    },
+    {
+      "original": "figures/lsm_comparison/table2_diagnostic.png",
+      "current": "figures/lsm_comparison/full/table2_diagnostic.png",
+      "sha256": "9815d66eeea981a36c99e48b2af91119456aaafef7dc5bb5bda08edd61721160",
+      "bytes": 112168,
+      "action": "moved",
+      "reason": "Figures for controlled plain/AV comparison"
+    },
+    {
+      "original": "figures/lsm_comparison/table2_diagnostic.svg",
+      "current": "figures/lsm_comparison/full/table2_diagnostic.svg",
+      "sha256": "c40c25ef1f6729eafbc0baeaf0db2decfcb775482e0695b050ab4c102384e63e",
+      "bytes": 88569,
+      "action": "moved",
+      "reason": "Figures for controlled plain/AV comparison"
+    },
+    {
+      "original": "figures/binomial_tree.png",
+      "current": "figures/pricing_methods/historical_quick/binomial_tree.png",
+      "sha256": "91921871634511eb9de6498d3e2536ca6496db2cb94eb8a1995b866ca1b8774b",
+      "bytes": 143142,
+      "action": "moved",
+      "reason": "Historical broader quick-study figures"
+    },
+    {
+      "original": "figures/binomial_tree.svg",
+      "current": "figures/pricing_methods/historical_quick/binomial_tree.svg",
+      "sha256": "0d27b4889593051fe241b69a2a7e95e23420da5ff8f4b1e84cb0e67a5cfb2df1",
+      "bytes": 70214,
+      "action": "moved",
+      "reason": "Historical broader quick-study figures"
+    },
+    {
+      "original": "figures/convergence.png",
+      "current": "figures/pricing_methods/historical_quick/convergence.png",
+      "sha256": "76e0f6e08b8e4e8157b1ad37735773e8737a95a3ea50b8cf16b4d1b7163617a9",
+      "bytes": 308468,
+      "action": "moved",
+      "reason": "Historical broader quick-study figures"
+    },
+    {
+      "original": "figures/convergence.svg",
+      "current": "figures/pricing_methods/historical_quick/convergence.svg",
+      "sha256": "99cba10b5ff4e07b07c2ab19206ddb3769e4a269c57fdfd87a0b503778696e5e",
+      "bytes": 145123,
+      "action": "moved",
+      "reason": "Historical broader quick-study figures"
+    },
+    {
+      "original": "figures/lsm_exercise_grid.png",
+      "current": "figures/pricing_methods/historical_quick/lsm_exercise_grid.png",
+      "sha256": "665c5ad746fd5f25670de85355e7cacc483dcb385caab1a4bf878411e28a12e5",
+      "bytes": 180633,
+      "action": "moved",
+      "reason": "Historical broader quick-study figures"
+    },
+    {
+      "original": "figures/lsm_exercise_grid.svg",
+      "current": "figures/pricing_methods/historical_quick/lsm_exercise_grid.svg",
+      "sha256": "64df2236140e628d1267fd06d6b975fe797b7b3c00220e7a2644c7eb61729fc3",
+      "bytes": 78412,
+      "action": "moved",
+      "reason": "Historical broader quick-study figures"
+    },
+    {
+      "original": "figures/newton_convergence.png",
+      "current": "figures/pricing_methods/historical_quick/newton_convergence.png",
+      "sha256": "439b0df3cc085577160b2624e8eb9f1acfd4724c07f0de15f4fe1ca95adec1c1",
+      "bytes": 345559,
+      "action": "moved",
+      "reason": "Historical broader quick-study figures"
+    },
+    {
+      "original": "figures/newton_convergence.svg",
+      "current": "figures/pricing_methods/historical_quick/newton_convergence.svg",
+      "sha256": "9bc39541996be64390b734393af8074f0add01360b8efb6f427cfdf2fbdac6fc",
+      "bytes": 143606,
+      "action": "moved",
+      "reason": "Historical broader quick-study figures"
+    },
+    {
+      "original": "figures/variance_reduction.png",
+      "current": "figures/pricing_methods/historical_quick/variance_reduction.png",
+      "sha256": "36e41a7de37b06c2ce5d81ccbc443c5e89958dafecfcfefab36cd6ea5dcbbec9",
+      "bytes": 331252,
+      "action": "moved",
+      "reason": "Historical broader quick-study figures"
+    },
+    {
+      "original": "figures/variance_reduction.svg",
+      "current": "figures/pricing_methods/historical_quick/variance_reduction.svg",
+      "sha256": "f0c242805bbfbccc1977b325567f4b51b7543cc253d22103e1773504276ea2f7",
+      "bytes": 141608,
+      "action": "moved",
+      "reason": "Historical broader quick-study figures"
+    },
+    {
+      "original": "data/monte_carlo_benchmark.csv",
+      "current": "archive/legacy_monte_carlo.zip::monte_carlo_benchmark.csv",
+      "sha256": "77637be7c6397e3ffa5f0ebfea547aa75ebe5ad0dcd4be218c2e6c9aac1e4f5c",
+      "bytes": 4135,
+      "action": "archived_zip",
+      "reason": "Earlier loose simulation data; retained exactly, outside active experiments"
+    },
+    {
+      "original": "data/monte_carlo_parameters.csv",
+      "current": "archive/legacy_monte_carlo.zip::monte_carlo_parameters.csv",
+      "sha256": "5288d22685e3f0ec46d0e8aefe7808bcee6e910d26c9b2fb6adb2cbc4754c611",
+      "bytes": 170,
+      "action": "archived_zip",
+      "reason": "Earlier loose simulation data; retained exactly, outside active experiments"
+    },
+    {
+      "original": "data/monte_carlo_paths.csv",
+      "current": "archive/legacy_monte_carlo.zip::monte_carlo_paths.csv",
+      "sha256": "a616120dbf173555729f97e00fb98986c674687cefb5ab65b03d312b56c0973c",
+      "bytes": 8474262,
+      "action": "archived_zip",
+      "reason": "Earlier loose simulation data; retained exactly, outside active experiments"
+    },
+    {
+      "original": "data/monte_carlo_terminal_histogram.csv",
+      "current": "archive/legacy_monte_carlo.zip::monte_carlo_terminal_histogram.csv",
+      "sha256": "c06b6e0040d01d969b442f9690f1b5501a9809511b719ef15fa761f58b9f7890",
+      "bytes": 20779,
+      "action": "archived_zip",
+      "reason": "Earlier loose simulation data; retained exactly, outside active experiments"
+    },
+    {
+      "original": "data/monte_carlo_terminal_sample.csv",
+      "current": "archive/legacy_monte_carlo.zip::monte_carlo_terminal_sample.csv",
+      "sha256": "cafa785f25dda71a1fe823297d07301cc87b8db36fd247d1ef6749eeca1d6cd9",
+      "bytes": 31667693,
+      "action": "archived_zip",
+      "reason": "Earlier loose simulation data; retained exactly, outside active experiments"
+    },
+    {
+      "original": "data/monte_carlo_terminal_summary.csv",
+      "current": "archive/legacy_monte_carlo.zip::monte_carlo_terminal_summary.csv",
+      "sha256": "b0fe9a2a03ff840f00d161e007053cb82e9336ee2fec5d3b7bf15c2aa9f633be",
+      "bytes": 696,
+      "action": "archived_zip",
+      "reason": "Earlier loose simulation data; retained exactly, outside active experiments"
+    },
+    {
+      "original": "notebooks/option_pricing.ipynb",
+      "current": "archive/organization_2026-11-26/supporting/option_pricing_before_paths.ipynb",
+      "sha256": "e519c6b1bdabb20b4e1c4d4c2fdb3d638dbdabd266cc6c8d00851da2edc33e94",
+      "bytes": 1789191,
+      "action": "archived_copy",
+      "reason": "Preserve saved outputs before updating optional notebook paths"
+    }
+  ]
+}

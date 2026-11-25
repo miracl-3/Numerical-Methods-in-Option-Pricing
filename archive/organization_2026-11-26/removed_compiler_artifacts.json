@@ -1,0 +1,20 @@
+[
+  {
+    "file": "include/binomial.exe",
+    "sha256": "361055ffe5d3bf6f14f01c551839d1462b2a5fecbc334c96363453b0a0d5a123",
+    "bytes": 52495471,
+    "reason": "Generated GCC precompiled header; rebuildable, not a research result"
+  },
+  {
+    "file": "include/experiment.exe",
+    "sha256": "583919f6202e9e2c27862f40c6bd4a11fafd9ad58a55f92d71e9f9510a1b99dd",
+    "bytes": 105889547,
+    "reason": "Generated GCC precompiled header; rebuildable, not a research result"
+  },
+  {
+    "file": "include/model.exe",
+    "sha256": "9dbcdd15d7df28ab19c2372a1b78a65edf47b790a6080c376281a819ee28bc18",
+    "bytes": 52443392,
+    "reason": "Generated GCC precompiled header; rebuildable, not a research result"
+  }
+]

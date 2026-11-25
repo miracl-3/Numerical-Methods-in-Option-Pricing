@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter
 import numpy as np
 import pandas as pd
+from experiment_files import plot_locations
 
 ROOT = Path(__file__).resolve().parents[1]
 COLORS = {"plain_mc": "#263b57", "antithetic": "#00857d", "control_variate": "#c16a2b",
@@ -225,9 +226,8 @@ def binomial_diagram(output_dir):
     save(fig, output_dir, "binomial_tree")
 
 
-def create_figures(data_dir=ROOT / "data" / "experiments", output_dir=ROOT / "figures"):
-    data_dir, output_dir = Path(data_dir), Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+def create_figures(data_dir=None, output_dir=None, quick=False):
+    data_dir, output_dir = plot_locations("pricing_methods", data_dir, output_dir, quick)
     style()
     convergence(data_dir, output_dir)
     variance_reduction(data_dir, output_dir)
@@ -238,7 +238,8 @@ def create_figures(data_dir=ROOT / "data" / "experiments", output_dir=ROOT / "fi
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-dir", type=Path, default=ROOT / "data" / "experiments")
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "figures")
+    parser.add_argument("--data-dir", type=Path)
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--quick", action="store_true")
     options = parser.parse_args()
-    create_figures(options.data_dir, options.output_dir)
+    create_figures(options.data_dir, options.output_dir, options.quick)

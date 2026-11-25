@@ -4,7 +4,7 @@
     {
       "label": "C++: Build entire project",
       "type": "process",
-      "command": "python",
+      "command": "${command:python.interpreterPath}",
       "args": ["${workspaceFolder}/scripts/build.py"],
       "options": {"cwd": "${workspaceFolder}"},
       "group": {
@@ -35,7 +35,7 @@
     {
       "label": "C++: Build debug",
       "type": "process",
-      "command": "python",
+      "command": "${command:python.interpreterPath}",
       "args": ["${workspaceFolder}/scripts/build.py", "--debug"],
       "options": {"cwd": "${workspaceFolder}"},
       "group": "build",
@@ -46,7 +46,7 @@
       "label": "C++: Validate project",
       "type": "process",
       "dependsOn": "C++: Build entire project",
-      "command": "python",
+      "command": "${command:python.interpreterPath}",
       "args": ["${workspaceFolder}/tests/test_pricing.py", "-v"],
       "options": {"cwd": "${workspaceFolder}"},
       "detail": "Runs numerical validation against the six executables",

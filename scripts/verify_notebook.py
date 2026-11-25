@@ -14,7 +14,9 @@ import json
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def execute(notebook):
+def execute(notebook, output=None):
+    output = output or ROOT / "tmp/notebooks" / notebook.name
+    output.parent.mkdir(parents=True, exist_ok=True)
     # Use this exact interpreter without registering a kernel in the user's profile.
     with TemporaryDirectory(prefix="pricing-kernel-") as directory:
         kernel = Path(directory) / "pricing-python"
@@ -36,13 +38,14 @@ def execute(notebook):
         client = NotebookClient(document, timeout=120, kernel_name="pricing-python", km=kernel_manager,
                                 resources={"metadata": {"path": str(ROOT / "notebooks")}})
         client.execute(env=environment)
-        nbformat.write(document, notebook)
-    print(f"Executed and validated {notebook.name}")
+        nbformat.write(document, output)
+    print(f"Executed and validated {output}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("notebook", nargs="?", type=Path,
                         default=ROOT / "notebooks" / "option_pricing.ipynb")
+    parser.add_argument("--output", type=Path, help="Executed copy; default tmp/notebooks/.")
     options = parser.parse_args()
-    execute(options.notebook)
+    execute(options.notebook, options.output)

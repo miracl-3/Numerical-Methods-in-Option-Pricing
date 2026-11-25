@@ -19,9 +19,16 @@ struct Config {
     std::size_t paths = 100000;
     std::size_t training_paths = 50000;
     std::size_t reference_steps = 2000;
+    std::size_t exercise_dates = 0; // Optional matched-date CRR output; zero means every tree date only.
     std::uint64_t seed = 42;
     double boundary_ratio = 0.85;
-    std::string lsm_mode = "independent";
+    std::string lsm_mode; // Legacy aliases, resolved only by the LSM executable.
+    std::string sampling = "antithetic";
+    std::string valuation = "in-sample";
+    bool sampling_explicit = false;
+    bool valuation_explicit = false;
+    std::string regression_diagnostics;
+    std::string lsm_trace;
     std::string output;
     std::string newton_trace;
 };
@@ -60,9 +67,14 @@ inline Config parse_config(int argc, char **argv) {
         else if (name == "--paths") config.paths = integer(value, name);
         else if (name == "--train-paths") config.training_paths = integer(value, name);
         else if (name == "--reference-steps") config.reference_steps = integer(value, name);
+        else if (name == "--exercise-dates") config.exercise_dates = integer(value, name);
         else if (name == "--seed") config.seed = integer(value, name);
         else if (name == "--boundary-ratio") config.boundary_ratio = real(value, name);
         else if (name == "--lsm-mode") config.lsm_mode = value;
+        else if (name == "--sampling") { config.sampling = value; config.sampling_explicit = true; }
+        else if (name == "--valuation") { config.valuation = value; config.valuation_explicit = true; }
+        else if (name == "--regression-diagnostics") config.regression_diagnostics = value;
+        else if (name == "--lsm-trace") config.lsm_trace = value;
         else if (name == "--output") config.output = value;
         else if (name == "--newton-trace") config.newton_trace = value;
         else if (name == "--type") {
@@ -80,10 +92,8 @@ inline Config parse_config(int argc, char **argv) {
         throw std::invalid_argument("Paths must be in [4, 10000000]; training paths in [4, 5000000].");
     if (config.boundary_ratio <= 0.0)
         throw std::invalid_argument("Boundary ratio must be positive.");
-    if (config.lsm_mode != "independent" && config.lsm_mode != "paper")
+    if (!config.lsm_mode.empty() && config.lsm_mode != "independent" && config.lsm_mode != "paper")
         throw std::invalid_argument("--lsm-mode must be independent or paper.");
-    if (config.lsm_mode == "paper" && config.paths % 2 != 0)
-        throw std::invalid_argument("Paper LSM requires an even --paths count for antithetic pairs.");
     return config;
 }
 
@@ -116,6 +126,27 @@ struct Row {
     double early_exercise_premium_bs = 0.0;
     double american_reference_crr = 0.0;
     double reference_runtime_ms = 0.0;
+    std::string sampling_method = "not_applicable";
+    std::string valuation_mode = "not_applicable";
+    std::string basis = "not_applicable";
+    std::string standard_error_scope = "not_applicable";
+    std::uint64_t training_seed = 0;
+    std::uint64_t evaluation_seed = 0;
+    std::size_t evaluation_paths = 0;
+    std::size_t antithetic_pairs = 0;
+    std::size_t training_antithetic_pairs = 0;
+    std::size_t unique_simulated_paths = 0;
+    bool exercise_at_zero = false;
+    double time_zero_continuation = 0.0;
+    std::size_t regression_rank_min = 0;
+    std::size_t regression_rank_max = 0;
+    std::size_t regression_itm_min = 0;
+    std::size_t regression_itm_max = 0;
+    std::size_t regression_fallback_dates = 0;
+    std::size_t regression_no_itm_dates = 0;
+    double regression_condition_inf_max = 0.0;
+    double training_runtime_ms = 0.0;
+    double valuation_runtime_ms = 0.0;
 };
 
 template <class Function> inline auto timed(Function function, double &milliseconds) {
@@ -135,7 +166,12 @@ inline void write_csv(std::ostream &out, const Config &config, const std::vector
            "naive_path_standard_error,european_price,european_standard_error,"
            "european_naive_path_standard_error,early_exercise_premium,"
            "early_exercise_premium_standard_error,early_exercise_premium_naive_path_standard_error,"
-           "early_exercise_premium_bs,american_reference_crr,reference_runtime_ms\n";
+           "early_exercise_premium_bs,american_reference_crr,reference_runtime_ms,"
+           "sampling_method,valuation_mode,basis,standard_error_scope,training_seed,evaluation_seed,"
+           "evaluation_paths,antithetic_pairs,training_antithetic_pairs,unique_simulated_paths,"
+           "exercise_at_zero,time_zero_continuation,regression_rank_min,regression_rank_max,"
+           "regression_itm_min,regression_itm_max,regression_fallback_dates,regression_no_itm_dates,"
+           "regression_condition_inf_max,training_runtime_ms,valuation_runtime_ms\n";
     out << std::setprecision(17);
     const auto &c = config.contract;
     constexpr double z95 = 1.959963984540054;
@@ -161,7 +197,16 @@ inline void write_csv(std::ostream &out, const Config &config, const std::vector
             << ',' << row.early_exercise_premium_standard_error
             << ',' << row.early_exercise_premium_naive_path_standard_error
             << ',' << row.early_exercise_premium_bs << ',' << row.american_reference_crr
-            << ',' << row.reference_runtime_ms << '\n';
+            << ',' << row.reference_runtime_ms << ',' << row.sampling_method << ',' << row.valuation_mode
+            << ',' << row.basis << ',' << row.standard_error_scope << ',' << row.training_seed
+            << ',' << row.evaluation_seed << ',' << row.evaluation_paths << ',' << row.antithetic_pairs
+            << ',' << row.training_antithetic_pairs << ',' << row.unique_simulated_paths
+            << ',' << row.exercise_at_zero << ',' << row.time_zero_continuation
+            << ',' << row.regression_rank_min << ',' << row.regression_rank_max
+            << ',' << row.regression_itm_min << ',' << row.regression_itm_max
+            << ',' << row.regression_fallback_dates << ',' << row.regression_no_itm_dates
+            << ',' << row.regression_condition_inf_max << ',' << row.training_runtime_ms
+            << ',' << row.valuation_runtime_ms << '\n';
     }
 }
 
@@ -180,9 +225,14 @@ inline int run_experiment(int argc, char **argv, const std::string &description,
                 "--paths N             evaluation paths; default 100000\n"
                 "--train-paths N       LSM training / control and IS pilots; default 50000\n"
                 "--reference-steps N   American CRR reference resolution; default 2000\n"
+                "--exercise-dates N    binomial_american: also export a matched-date reference\n"
                 "--boundary-ratio X    fixed-rule MC: put <= X*K, call >= X*K; default 0.85\n"
                 "--seed N              master random seed; default 42\n"
-                "--lsm-mode MODE       lsm_american only: independent (default) or paper\n"
+                "--sampling MODE       LSM: plain or antithetic (default)\n"
+                "--valuation MODE      LSM: in-sample (default), out-of-sample, or both\n"
+                "--lsm-mode MODE       legacy LSM aliases: paper or independent\n"
+                "--regression-diagnostics PATH  LSM per-date QR diagnostics CSV\n"
+                "--lsm-trace PATH       LSM backward decisions CSV (small learning runs)\n"
                 "--output PATH         CSV destination; default stdout\n"
                 "--newton-trace PATH   variance_reduction only: Newton iteration CSV\n"
                 "Method-specific use of these shared options is documented in README.md.\n";

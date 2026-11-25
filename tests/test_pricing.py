@@ -226,6 +226,34 @@ class PricingTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("even --paths", result.stderr)
 
+    def test_lsm_sampling_and_mode_are_explicit_in_csv(self):
+        for sampling, samples in [("plain", 2000), ("antithetic", 1000)]:
+            row = self.price("lsm_american", sampling=sampling, paths=2000, steps=20)[0]
+            self.assertEqual(row["sampling_method"], sampling)
+            self.assertEqual(row["valuation_mode"], "in-sample")
+            self.assertEqual(row["basis"], "weighted_laguerre_4")
+            self.assertEqual(row["standard_error_scope"], "in_sample_approximate")
+            self.assertEqual(int(row["independent_samples"]), samples)
+            self.assertEqual(int(row["training_paths"]), 2000)
+            self.assertEqual(int(row["evaluation_paths"]), 2000)
+            self.assertEqual(int(row["unique_simulated_paths"]), 2000)
+
+    def test_lsm_both_values_one_fit_and_exports_qr_diagnostics(self):
+        with TemporaryDirectory(prefix="lsm-diagnostics-") as directory:
+            diagnostics = Path(directory) / "qr.csv"
+            rows = self.price("lsm_american", sampling="antithetic", valuation="both",
+                              paths=2000, train_paths=3000, steps=20,
+                              regression_diagnostics=diagnostics)
+            self.assertEqual([row["valuation_mode"] for row in rows], ["in-sample", "out-of-sample"])
+            self.assertEqual([int(row["paths"]) for row in rows], [3000, 2000])
+            self.assertEqual(rows[0]["training_seed"], rows[1]["training_seed"])
+            self.assertNotEqual(rows[1]["evaluation_seed"], rows[1]["training_seed"])
+            with diagnostics.open(newline="", encoding="utf-8") as source:
+                dates = list(csv.DictReader(source))
+            self.assertEqual(len(dates), 19)
+            self.assertTrue(all(0 <= int(row["rank"]) <= 4 for row in dates))
+            self.assertTrue(all(math.isfinite(float(row["condition_inf_retained_R"])) for row in dates))
+
     def test_lsm_deep_itm_exercises_at_zero(self):
         row = self.price("lsm_american", spot=40, paths=1000, train_paths=1000, steps=20)[0]
         self.assertAlmostEqual(float(row["price"]), 60.0, places=10)
@@ -271,7 +299,8 @@ class PricingTests(unittest.TestCase):
             first = self.price(method, paths=1000, train_paths=1000, steps=10)
             second = self.price(method, paths=1000, train_paths=1000, steps=10)
             for a, b in zip(first, second):
-                timing_fields = {"runtime_ms", "reference_runtime_ms"}
+                timing_fields = {"runtime_ms", "reference_runtime_ms", "training_runtime_ms",
+                                 "valuation_runtime_ms"}
                 self.assertEqual({k: v for k, v in a.items() if k not in timing_fields},
                                  {k: v for k, v in b.items() if k not in timing_fields})
 

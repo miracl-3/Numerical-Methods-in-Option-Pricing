@@ -18,8 +18,10 @@ import statistics
 import subprocess
 
 from build import ROOT, executable
+from experiment_files import REFERENCE_DIR, prepare_results
+from crr_cache import get_reference
 
-PAPER_FILE = ROOT / "data" / "reference" / "longstaff_schwartz_table1.csv"
+PAPER_FILE = REFERENCE_DIR / "table1.csv"
 PAPER_URL = ("https://www.kellogg.northwestern.edu/faculty/mcdonald/ftp/"
              "practicum/papers/longstaffschwartz.pdf")
 STRIKE, RATE, EXERCISES_PER_YEAR = 40.0, 0.06, 50
@@ -43,7 +45,9 @@ def run(build_dir, case, paths, seed, reference_steps):
     ]
     result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=True)
     raw = next(csv.DictReader(io.StringIO(result.stdout)))
-    return {name: (value if name in {"method", "option_type", "newton_status"}
+    text_fields = {"method", "option_type", "newton_status", "sampling_method",
+                   "valuation_mode", "basis", "standard_error_scope"}
+    return {name: (value if name in text_fields else int(value) if name.endswith("_seed")
                    else float(value)) for name, value in raw.items()}
 
 
@@ -61,6 +65,12 @@ def comparison(raw, case, reference=None):
         "early_exercise_premium_naive_path_standard_error", "early_exercise_premium_bs",
         "exercise_fraction", "independent_samples", "payoff_evaluations", "runtime_ms",
         "reference_runtime_ms")}
+    row.update({name: raw[name] for name in (
+        "sampling_method", "valuation_mode", "basis", "standard_error_scope",
+        "training_paths", "evaluation_paths", "training_seed", "evaluation_seed",
+        "antithetic_pairs", "training_antithetic_pairs", "unique_simulated_paths",
+        "exercise_at_zero", "regression_rank_min", "regression_rank_max",
+        "regression_condition_inf_max", "regression_fallback_dates", "regression_no_itm_dates")})
     row.update({
         "exercise_dates_per_year": EXERCISES_PER_YEAR,
         "reference_steps": reference["reference_steps"],
@@ -124,8 +134,9 @@ def standard_error_summary(convergence):
     return result
 
 
-def collect(build_dir, output_dir, quick=False, reference_steps=None, replicates=None, workers=2):
-    build_dir, output_dir = Path(build_dir).resolve(), Path(output_dir).resolve()
+def collect(build_dir, output_dir=None, quick=False, reference_steps=None, replicates=None, workers=2):
+    build_dir = Path(build_dir).resolve()
+    output_dir = prepare_results("paper_replication", output_dir, quick)
     binary = executable("lsm_american", build_dir)
     if not binary.is_file():
         raise RuntimeError(f"Missing {binary}; run python scripts/build.py first.")
@@ -136,16 +147,27 @@ def collect(build_dir, output_dir, quick=False, reference_steps=None, replicates
     if replicates < 2 or workers < 1:
         raise ValueError("At least two replicates and one worker are required.")
     cases = paper_cases()
+    def reference_for(case):
+        contract = {name: case[name] for name in ("spot", "volatility", "maturity")}
+        contract.update(strike=STRIKE, rate=RATE, type="put")
+        return get_reference(build_dir, contract, reference_steps, int(EXERCISES_PER_YEAR * case["maturity"]))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        references = list(pool.map(reference_for, cases))
+    matched_references = [{"reference_steps": ref["reference_steps"],
+                           "benchmark": ref["american_grid_reference_crr"],
+                           "american_reference_crr": ref["american_reference_crr"]} for ref in references]
     table_paths = 10000 if quick else 100000
     table_raw = parallel_runs([
-        (build_dir, case, table_paths, 42, reference_steps) for case in cases
+        (build_dir, case, table_paths, 42, int(EXERCISES_PER_YEAR * case["maturity"])) for case in cases
     ], workers, "Table 1")
-    table = [comparison(raw, case) for raw, case in zip(table_raw, cases)]
+    table = [comparison(raw, case, reference) for raw, case, reference in zip(table_raw, cases, matched_references)]
+    for row, ref in zip(table, references):
+        row.update(reference_cache_key=ref["cache_key"], reference_cache_hit=int(ref["cache_hit"]))
     write_rows(output_dir / "lsm_paper_table.csv", table)
 
     atm_index = next(index for index, case in enumerate(cases)
                      if case["spot"] == 40 and case["volatility"] == 0.2 and case["maturity"] == 1)
-    atm, atm_reference = cases[atm_index], table_raw[atm_index]
+    atm, atm_reference = cases[atm_index], matched_references[atm_index]
     path_counts = [1000, 2500, 5000] if quick else [5000, 10000, 25000, 50000, 100000]
     seeds = list(range(42, 42 + replicates))
     settings = [(paths, seed) for paths in path_counts for seed in seeds]
@@ -199,7 +221,7 @@ def collect(build_dir, output_dir, quick=False, reference_steps=None, replicates
                       "sampling": "Z/-Z antithetic pairs",
                       "regressors": "constant + exp(-x/2) * (L0, L1, L2), x=S/K",
                       "cashflow_normalization": "divide payoffs by K for regression, restore for output",
-                      "valuation": "in-sample realized stopped cashflows, positive exercise dates",
+                      "valuation": "in-sample realized stopped cashflows, time zero and positive exercise dates",
                       "standard_error": "SD of pair averages / sqrt(number of pairs)"},
         "reference": {"time_steps": reference_steps, "terminal_nodes": reference_steps + 1,
                       "total_lattice_nodes": (reference_steps + 1) * (reference_steps + 2) // 2,
@@ -209,6 +231,8 @@ def collect(build_dir, output_dir, quick=False, reference_steps=None, replicates
         "convergence": {"spot": 40, "volatility": 0.2, "maturity": 1,
                         "path_counts": path_counts, "seeds": seeds, "replicates": replicates},
         "workers": workers,
+        "crr_cache": {"directory": ".cache/crr", "entries": references,
+                      "invalidation": "contract, tree/exercise grids, and CRR driver/shared-header SHA256"},
         "paper_reference_sha256": hashlib.sha256(PAPER_FILE.read_bytes()).hexdigest(),
         "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
         "limitations": summary["interpretation"] + [
@@ -227,7 +251,7 @@ def collect(build_dir, output_dir, quick=False, reference_steps=None, replicates
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build-dir", type=Path, default=ROOT / "build")
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "data" / "experiments")
+    parser.add_argument("--output-dir", type=Path, help="Fresh result directory; smoke defaults to tmp/.")
     parser.add_argument("--quick", action="store_true", help="Smoke profile only; not published sample budget.")
     parser.add_argument("--reference-steps", type=int, help="Default 100000 (2000 with --quick).")
     parser.add_argument("--replicates", type=int, help="Convergence seeds, default 30 (2 with --quick).")

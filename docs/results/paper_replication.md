@@ -1,5 +1,9 @@
 # Standard LSM reproduction: measured findings
 
+This document records the historical 25 November run. The common plain/AV
+engine and its new experiments are described in [the implementation](../methodology.md)
+and [comparison results](lsm_comparison.md); the historical CSVs remain unchanged.
+
 Run on 25 November 2026 using GCC 16.1.0, C++17, portable `-O2`, and the
 original Longstaff-Schwartz Table 1 American-put protocol. C++ performs the
 simulation, regression, cashflow valuation, within-run SE calculations, and
@@ -81,15 +85,15 @@ exercise-grid bias or numerical reference error.
 
 ## Files and validation
 
-- [Full 20-case comparison](../data/experiments/lsm_paper_table.csv)
-- [150 individual convergence fits](../data/experiments/lsm_paper_convergence.csv)
-- [SE calibration at five path budgets](../data/experiments/lsm_paper_se_summary.csv)
-- [Aggregate numerical summary](../data/experiments/lsm_paper_summary.json)
-- [Parameters, seeds, compiler and source provenance](../data/experiments/lsm_paper_manifest.json)
-- [Published table transcription and source record](../data/reference/longstaff_schwartz_table1_provenance.json)
-- [Price comparison figure](../figures/lsm_paper_table.png)
-- [Convergence figure](../figures/lsm_paper_convergence.png)
-- [Standard-error figure](../figures/lsm_paper_standard_errors.png)
+- [Full 20-case comparison](../../data/experiments/paper_replication/full/lsm_paper_table.csv)
+- [150 individual convergence fits](../../data/experiments/paper_replication/full/lsm_paper_convergence.csv)
+- [SE calibration at five path budgets](../../data/experiments/paper_replication/full/lsm_paper_se_summary.csv)
+- [Aggregate numerical summary](../../data/experiments/paper_replication/full/lsm_paper_summary.json)
+- [Parameters, seeds, compiler and source provenance](../../data/experiments/paper_replication/full/lsm_paper_manifest.json)
+- [Published table transcription and source record](../../data/reference/longstaff_schwartz_2001/provenance.json)
+- [Price comparison figure](../../figures/paper_replication/full/lsm_paper_table.png)
+- [Convergence figure](../../figures/paper_replication/full/lsm_paper_convergence.png)
+- [Standard-error figure](../../figures/paper_replication/full/lsm_paper_standard_errors.png)
 
 All 29 pricing tests and three procedure fixtures passed, including the
 original eight-path stopping decisions and price rounded to **0.1144**.
@@ -100,7 +104,7 @@ and 150 repeated fits (30 seeds at each of five budgets).
 The paper does not publish its generator, seeds, or SE formula. This rerun
 reproduces its disclosed procedure and sample budget; it cannot recreate the
 original random sample exactly. Printed prices and SEs have precision 0.001.
-See [the workflow](quickstart.md) to rebuild and rerun.
+See [the workflow](../../README.md) to rebuild and rerun.
 
 `capstone_report_11`, the notebook folder, its execution script, and the
 duplicate Python environment were removed. The project uses a single `.venv`

@@ -1,0 +1,11 @@
+{
+  "paper": "Longstaff and Schwartz (2001), Valuing American Options by Simulation: A Simple Least-Squares Approach",
+  "source_url": "https://www.kellogg.northwestern.edu/faculty/mcdonald/ftp/practicum/papers/longstaffschwartz.pdf",
+  "journal_page": 129,
+  "pdf_page_one_based": 17,
+  "verification": "Transcribed and visually checked against the original PDF table.",
+  "protocol": "Eight contracts (S=36 or 44, sigma=.20 or .40, T=1 or 2); five initial seeds each; 100000 in-sample paths and a separate 100000 out-of-sample paths, each with 50000 antithetic pairs; frozen in-sample regression coefficients; K=40, r=.06, 50 exercise dates/year.",
+  "printed_precision": "Prices, SEs and differences are printed to .001.",
+  "known_printed_inconsistency": "S=36, sigma=.20, T=2, replicate 3 prints a difference of +.009 although the printed prices 4.820 minus 4.829 give -.009. The CSV preserves the printed sign without silently correcting it.",
+  "limitations": "Original seeds, RNG and SE formula are unreported. Replicate numbers identify printed rows; they do not identify our new seed values. Compare distributions and aggregate results, not paired original/random-seed rows."
+}

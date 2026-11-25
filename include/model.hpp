@@ -103,12 +103,17 @@ struct Moments {
 // Time-major storage makes each regression date contiguous in memory.
 using Paths = std::vector<std::vector<double>>;
 
+enum class PathSampling { Plain, Antithetic };
+
 inline Paths simulate_paths(const Contract &c, std::size_t count, std::size_t steps,
-                            std::uint64_t seed) {
+                            std::uint64_t seed, PathSampling sampling = PathSampling::Plain) {
     if (steps == 0 || count < 2)
         throw std::invalid_argument("Need positive steps and at least two paths.");
     if (count > 50000000 / (steps + 1))
         throw std::invalid_argument("Path matrix exceeds the 50-million-value memory limit.");
+    const bool antithetic = sampling == PathSampling::Antithetic;
+    if (antithetic && count % 2 != 0)
+        throw std::invalid_argument("Antithetic sampling requires an even path count.");
     Paths paths(steps + 1, std::vector<double>(count, c.spot));
     std::mt19937_64 generator(seed);
     std::normal_distribution<double> normal;
@@ -116,10 +121,16 @@ inline Paths simulate_paths(const Contract &c, std::size_t count, std::size_t st
     const double drift = (c.rate - 0.5 * c.volatility * c.volatility) * dt;
     const double diffusion = c.volatility * std::sqrt(dt);
     for (std::size_t time = 1; time <= steps; ++time) {
-        for (std::size_t path = 0; path < count; ++path) {
-            paths[time][path] = paths[time - 1][path] * std::exp(drift + diffusion * normal(generator));
+        for (std::size_t path = 0; path < count; path += antithetic ? 2 : 1) {
+            const double shock = diffusion * normal(generator);
+            paths[time][path] = paths[time - 1][path] * std::exp(drift + shock);
             if (!std::isfinite(paths[time][path]))
                 throw std::overflow_error("Non-finite stock path.");
+            if (antithetic) {
+                paths[time][path + 1] = paths[time - 1][path + 1] * std::exp(drift - shock);
+                if (!std::isfinite(paths[time][path + 1]))
+                    throw std::overflow_error("Non-finite stock path.");
+            }
         }
     }
     return paths;

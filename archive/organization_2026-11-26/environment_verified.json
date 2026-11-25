@@ -1,0 +1,8 @@
+{
+  "python": "3.12.13 (main, Apr 14 2026, 14:31:26) [MSC v.1944 64 bit (AMD64)]",
+  "executable": "D:\\Projects\\Capstone Thesis\\.venv\\Scripts\\python.exe",
+  "numpy": "2.5.4",
+  "pandas": "3.0.6",
+  "matplotlib": "3.11.2",
+  "validation": "Core imports and research-file/cache tests passed; optional notebook execution and all three CTest targets passed before removing the redundant environment."
+}

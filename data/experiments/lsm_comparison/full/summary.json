@@ -1,0 +1,56 @@
+{
+  "table1": {
+    "plain": {
+      "cases": 20,
+      "rmse_vs_published_lsm": 0.015096832252679538,
+      "max_absolute_difference": 0.03496278976093592,
+      "mean_difference_vs_matched_crr": 0.005897124182585556
+    },
+    "antithetic": {
+      "cases": 20,
+      "rmse_vs_published_lsm": 0.009021399305480494,
+      "max_absolute_difference": 0.016836549467010187,
+      "mean_difference_vs_matched_crr": -0.006424770869968233
+    }
+  },
+  "atm_replicate_calibration": {
+    "plain": {
+      "replicates": 30,
+      "mean_price": 2.3138621940962163,
+      "replicate_sd": 0.008792899888930486,
+      "mean_plugin_se": 0.008706498555696104,
+      "replicate_sd_to_mean_plugin_se": 1.0099237750608545
+    },
+    "antithetic": {
+      "replicates": 30,
+      "mean_price": 2.3135040039900554,
+      "replicate_sd": 0.005458891279896269,
+      "mean_plugin_se": 0.005324779944026882,
+      "replicate_sd_to_mean_plugin_se": 1.0251862682174928
+    }
+  },
+  "atm_empirical_variance_factor_plain_over_av": 2.594510109530505,
+  "atm_mean_price_difference_plain_minus_av": 0.0003581901061610123,
+  "atm_paired_mean_difference_se": 0.0016565667338098668,
+  "table2": {
+    "fitted_policies": 40,
+    "mean_in_minus_out": 0.005698606969369452,
+    "max_absolute_in_minus_out": 0.0484745067754373,
+    "positive_differences": 21,
+    "negative_differences": 19
+  },
+  "limitations": [
+    "In-sample plug-in SEs are approximate: the fitted policy couples cashflows.",
+    "Out-of-sample SEs condition on one frozen fitted policy.",
+    "Empirical variance factors from 30 replicates are noisy and contract-specific.",
+    "Shared master seeds partially couple plain/AV runs; the mean contrast uses paired differences across seeds.",
+    "Table 2 in/out values share fitted coefficients, so their SEs cannot simply be added in quadrature for an exact difference test.",
+    "Original RNG, seeds and SE formula are unreported; printed-seed rows cannot be matched exactly."
+  ],
+  "regressions": {
+    "dates": 8860,
+    "rank_deficient_or_constant_dates": 0,
+    "no_itm_dates": 0,
+    "max_condition_inf_retained_R": 1500321181.3900907
+  }
+}

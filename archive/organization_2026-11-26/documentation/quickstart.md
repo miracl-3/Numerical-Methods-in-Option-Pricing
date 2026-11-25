@@ -92,9 +92,10 @@ for formulas and limitations.
 
 Each file builds as its own executable. Shared numerical functions live in
 `include/`; programs call them directly. The executables do not launch one
-another. The standard LSM executable trains and evaluates on independent paths
-by default. The paper runner selects `--lsm-mode paper` for the original
-in-sample Table 1 procedure.
+another. LSM defaults to antithetic sampling and in-sample valuation. Select
+`--sampling plain` for plain LSM; select `--valuation out-of-sample` for frozen
+policy evaluation, or `--valuation both` for the Table 2 diagnostic. Both
+samplers use exactly the same normalized weighted-Laguerre regression.
 
 Run a single paper-mode contract after building:
 
@@ -106,8 +107,16 @@ Run a single paper-mode contract after building:
 
 Paper mode uses 50,000 antithetic pairs and a constant plus three weighted
 Laguerre functions of `S/K`. The same paths fit and value the stopping rule.
-For the independent mode, omit `--lsm-mode paper` and set `--train-paths`
-separately from `--paths`.
+For independent evaluation, set `--valuation out-of-sample` and set
+`--train-paths` separately from `--paths`. The legacy `--lsm-mode independent`
+alias selects plain, out-of-sample LSM unless explicit options override it;
+it now uses the common weighted-Laguerre basis. The `paper` alias retains the
+antithetic/in-sample defaults.
+
+Run the new controlled comparison with `python scripts/run_lsm_comparison.py`
+and `python scripts/plot_lsm_comparison.py`. This preserves the existing results
+and reuses their fine CRR references. See [the implementation walkthrough](lsm_implementation.md)
+for equations, diagnostics, and the deterministic eight-path example.
 
 Any executable can print a row for inspection:
 

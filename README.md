@@ -1,157 +1,67 @@
-# Numerical option pricing: C++ calculations, Python visualization
+# Numerical option pricing
 
-Six C++17 programs simulate stock paths, fit exercise policies, calculate prices
-and standard errors, and export CSV. Python builds and runs the programs, collects
-the exported results, and creates PNG/SVG figures. The main reproduction is the
-20-case American-put benchmark in Longstaff and Schwartz (2001), with published
-prices and standard errors and an additional 100,000-step CRR reference.
+C++17 computes prices, stock paths, exercise policies and standard errors.
+Python runs experiments, analyzes exported CSVs and creates figures.
 
-Start with [the workflow guide](docs/quickstart.md). See
-[the benchmark findings](docs/lsm_benchmark.md) for measured results and
-[the methodology](docs/methodology.md) for equations and interpretation.
+- [Mathematics, equation-to-function map and eight-path example](docs/methodology.md)
+- [Original-paper replication](docs/results/paper_replication.md)
+- [Plain LSM versus AV-LSM](docs/results/lsm_comparison.md)
+- [Repository tree and file/cache rules](docs/repository.md)
 
-## Reproduce the LSM benchmark
+## Build and test
 
-Requirements: Python 3.10+, a C++17 compiler, and the plotting packages in
-[`requirements.txt`](requirements.txt). C++ pricing and numerical tests have no
-third-party library dependencies. From the repository root:
+Use Python 3.10+ and GCC or Clang with C++17. On Windows:
 
-```text
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 python scripts/build.py
 python tests/test_pricing.py -v
 python tests/test_lsm_procedure.py -v
-python scripts/run_lsm_paper.py
-python scripts/plot_lsm_paper.py
+python tests/test_experiment_files.py -v
 ```
 
-On Windows, a local environment can be created and used with:
+Reuse an existing working `.venv`. On Linux/macOS activate `.venv/bin/activate`.
+`build.py` is primary; `--compiler PATH` selects a compiler. CMake is optional.
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe scripts/build.py
-```
+## Research runs
 
-The build script finds `g++` or `clang++` on `PATH`; `--compiler PATH` selects
-one explicitly. It writes optimized executables and compiler/source metadata
-to `build/`. Use `--debug` for an unoptimized diagnostic build.
-
-The full paper runner uses:
-
-- `K=40`, `r=0.06`, no dividends; initial stock prices 36, 38, 40, 42, 44;
-  volatilities 0.20 and 0.40; maturities one and two years.
-- 100,000 paths per Table 1 case, comprising 50,000 antithetic pairs, seed 42,
-  and 50 exercise dates per year.
-- In-sample LSM with a constant and three weighted Laguerre functions of `S/K`;
-  regressions use only in-the-money paths and discounted realized cashflows.
-- 100,000-step CRR references with exercise at every tree date and with exercise
-  restricted to the same 50 dates per year as LSM. C++ calculates each contract's
-  references once; the runner reuses them for repeated simulations.
-- A one-year at-the-money convergence study at 5,000, 10,000, 25,000, 50,000,
-  and 100,000 paths, using 30 seeds (42-71) per budget.
-
-Here **100,000 means time steps**: the CRR tree has 100,001 terminal nodes and
-5,000,150,001 nodes in total. It requires quadratic computation, so the full
-reference calculation is substantially slower than the simulations. A rolling
-vector keeps memory linear in the number of steps.
-
-`--workers` defaults to 2; `--replicates` defaults to 30; `--reference-steps`
-defaults to 100000. Use `--quick` for a smoke run with 10,000 paths per table
-case, 2,000-step references, two convergence seeds, and three path budgets.
-Quick results do not reproduce the paper's sample budget. Choose `--output-dir`
-to keep a smoke run separate from curated full results.
-
-## Results and uncertainty
-
-The runner writes these files under `data/experiments/`:
-
-| File | Contents |
-|---|---|
-| `lsm_paper_table.csv` | Our 20 prices, uncertainty diagnostics, published Table 1 values, and CRR comparisons |
-| `lsm_paper_convergence.csv` | Individual repeated-seed results by path budget |
-| `lsm_paper_se_summary.csv` | Across-seed dispersion compared with reported standard errors |
-| `lsm_paper_summary.json` | Aggregate benchmark comparisons |
-| `lsm_paper_manifest.json` | Parameters, random seeds, build metadata, and reference provenance |
-
-The plotting script reads these CSVs and creates `lsm_paper_table`,
-`lsm_paper_convergence`, and `lsm_paper_standard_errors` figures in `figures/`,
-each as PNG and SVG.
-
-The primary within-run standard error uses antithetic **pair averages**. A
-separate diagnostic calculates the marginal path standard deviation divided by
-the square root of the path count, for comparison with the paper's printed
-errors. The paper does not state its standard-error formula, random generator,
-or seeds. Matching a printed error supports a numerical comparison; the
-original formula remains unreported. Repeated simulations measure the
-variability of the complete fitted LSM estimator across seeds.
-
-The [published reference CSV](data/reference/longstaff_schwartz_table1.csv) was
-transcribed and visually verified from Table 1, journal page 127. Its prices
-and errors are printed to three decimal places. The paper's reference uses an
-implicit finite difference scheme; our CRR references are additional numerical
-comparisons. The [source record](data/reference/longstaff_schwartz_table1_provenance.json)
-documents this distinction and the unreported implementation details.
-
-## Six pricing methods
-
-| C++ source in `src/` | Purpose |
-|---|---|
-| `binomial_european.cpp` | European CRR tree, checked against Black-Scholes |
-| `binomial_american.cpp` | CRR tree with early exercise |
-| `monte_carlo_european.cpp` | Exact-terminal GBM simulation and sampling uncertainty |
-| `monte_carlo_american.cpp` | Simulation of a prescribed exercise policy |
-| `variance_reduction.cpp` | Plain European MC, antithetic/control variates, and Newton importance sampling |
-| `lsm_american.cpp` | Independent train/evaluation LSM by default; original-paper in-sample mode with `--lsm-mode paper` |
-
-The model assumes constant risk-neutral GBM parameters, continuous compounding,
-and no dividends. Black-Scholes is the European reference. A fine CRR tree is
-an American numerical reference. More simulation paths reduce sampling noise;
-they do not remove exercise-grid or policy-approximation error.
-
-Each executable accepts `--help` and writes CSV to standard output or
-`--output PATH`. For example:
-
-```powershell
-.\build\lsm_american.exe --lsm-mode paper --type put --spot 40 --strike 40 `
-    --rate 0.06 --volatility 0.20 --maturity 1 --steps 50 --paths 100000 `
-    --reference-steps 100000 --output data/custom/lsm.csv
-```
-
-On macOS/Linux use `./build/lsm_american`. The executable's ordinary
-`--reference-steps` default remains 2000; the full paper runner selects 100000.
-
-The broader six-method study remains available through
-`python scripts/run_experiments.py --quick` followed by
-`python scripts/plot_results.py`. This produces the European convergence,
-American policy, variance reduction, and exercise-grid figures.
-
-## Build with CMake
+Preserved runs live in `data/experiments/STUDY/full/`. Runners refuse to overwrite
+research directories. Choose a fresh name for another full run:
 
 ```text
-cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
-cmake --build build/cmake --config Release
-ctest --test-dir build/cmake -C Release --output-on-failure
+python scripts/run_lsm_paper.py --output-dir data/experiments/paper_replication/rerun
+python scripts/plot_lsm_paper.py --data-dir data/experiments/paper_replication/rerun
+python scripts/run_lsm_comparison.py --output-dir data/experiments/lsm_comparison/rerun
+python scripts/plot_lsm_comparison.py --data-dir data/experiments/lsm_comparison/rerun
 ```
 
-Pass `--build-dir build/cmake` to a runner for single-configuration generators,
-or `--build-dir build/cmake/Release` for Visual Studio. Numerical validation
-checks pricing identities, tree convergence, simulation uncertainty, LSM
-cashflow decisions, reproducibility, edge cases, and input validation.
+Both full studies use 100000 paths per sample and 50 exercise dates/year.
+American CRR references use 100000 **time steps**, with every-tree-date and
+matched-date exercise. Cold trees are expensive; compatible references are
+reused from `.cache/crr/`. Contract, grid or pricing-source changes invalidate
+entries. Historical tables remain evidence, not an unchecked cache.
 
-## Repository layout
+Small installation checks are separate:
 
 ```text
-src/                     Six C++ pricing entry points
-include/                 Shared pricing, statistics, command-line and CSV code
-scripts/                 Build, collect C++ output, and plot CSVs
-tests/                   Numerical and input-validation checks
-data/reference/          Published Table 1 values and provenance
-data/experiments/        Curated calculation results and manifests
-figures/                 Generated PNG and SVG figures
-docs/                    Workflow, methodology, and benchmark findings
-extensions/              Separate historical research implementations
+python scripts/run_lsm_comparison.py --quick
+python scripts/plot_lsm_comparison.py --quick
 ```
 
-The separate importance-sampling extension is retained as historical research.
-A single `.venv` supplies the Python packages for the CSV/plot workflow.
+Smoke data and figures go under ignored `tmp/smoke/STUDY/`; they cannot target
+research results or figures. The broader study uses `run_experiments.py` and
+`plot_results.py`, with the same protections.
+
+## Files
+
+`src/`, `include/`, `scripts/` and `tests/` are maintained code.
+`data/reference/longstaff_schwartz_2001/` is the canonical published-data bundle.
+`data/experiments/` and `figures/` retain generated evidence by study and run.
+`docs/` contains methodology, interpretation and organization; `archive/` and
+`extensions/` preserve historical work. `build/`, `.cache/` and `tmp/` are local.
+
+Notebooks are optional: install `requirements-notebooks.txt` if needed.
+They read CSVs and invoke C++, without duplicating numerical pricing algorithms.
+Executed notebook copies default to `tmp/notebooks/`.

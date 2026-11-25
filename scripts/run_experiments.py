@@ -12,6 +12,7 @@ from tempfile import TemporaryDirectory
 from statistics import median
 
 from build import ROOT, METHODS, executable
+from experiment_files import prepare_results
 
 
 def run(name, build_dir, **parameters):
@@ -60,8 +61,9 @@ def summarize_variance(rows):
     return summaries
 
 
-def collect(build_dir, output_dir, quick=False):
-    build_dir, output_dir = Path(build_dir).resolve(), Path(output_dir).resolve()
+def collect(build_dir, output_dir=None, quick=False):
+    build_dir = Path(build_dir).resolve()
+    output_dir = prepare_results("pricing_methods", output_dir, quick)
     for method in METHODS:
         if not executable(method, build_dir).is_file():
             raise RuntimeError(f"Missing {method}; run python scripts/build.py first.")
@@ -93,14 +95,15 @@ def collect(build_dir, output_dir, quick=False):
     for paths in ([2000, 10000, 50000] if quick else [5000, 20000, 100000]):
         for seed in seeds:
             for method in ["monte_carlo_american", "lsm_american"]:
-                policy_options = {"boundary_ratio": 0.75} if method == "monte_carlo_american" else {}
+                policy_options = {"boundary_ratio": 0.75} if method == "monte_carlo_american" else {
+                    "sampling": "plain", "valuation": "out-of-sample"}
                 american.extend(run(method, build_dir, paths=paths, train_paths=max(2000, paths // 2),
                                     steps=50, seed=seed, **references, **policy_options))
     write_rows(output_dir / "american_convergence.csv", american)
     for steps in [10, 25, 50, 100]:
         for seed in seeds:
             exercise_grid.extend(run("lsm_american", build_dir, paths=50000, train_paths=25000,
-                                     steps=steps, seed=seed, **references))
+                                     steps=steps, seed=seed, sampling="plain", valuation="out-of-sample", **references))
     write_rows(output_dir / "exercise_grid.csv", exercise_grid)
     manifest = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -110,6 +113,7 @@ def collect(build_dir, output_dir, quick=False):
         "contract": {"spot": 100, "strike": 100, "rate": 0.05, "volatility": 0.2,
                      "maturity": 1, "dividend_yield": 0},
         "american_reference_steps": 2000,
+        "lsm_sampling": "plain", "lsm_valuation": "out-of-sample", "lsm_basis": "weighted_laguerre_4",
         "american_fixed_boundary_ratio": 0.75,
         "variance_reduction_pilot_paths": 2000,
         "importance_sampling": {"shift_selection": "basic Newton directly on the fixed-pilot second moment",
@@ -134,11 +138,11 @@ def collect(build_dir, output_dir, quick=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build-dir", type=Path, default=ROOT / "build")
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "data" / "experiments")
+    parser.add_argument("--output-dir", type=Path, help="Fresh result directory; smoke defaults to tmp/.")
     parser.add_argument("--quick", action="store_true", help="Three seeds and smaller path counts.")
     args = parser.parse_args()
     try:
         collect(args.build_dir, args.output_dir, args.quick)
-    except (RuntimeError, subprocess.CalledProcessError) as error:
+    except (RuntimeError, ValueError, subprocess.CalledProcessError) as error:
         detail = getattr(error, "stderr", "") or str(error)
         parser.exit(1, detail + "\n")

@@ -1,0 +1,5 @@
+# Optional; the core C++/CSV/plot workflow does not use these packages.
+-r requirements.txt
+nbclient>=0.10,<1
+ipykernel>=6.25,<8
+jupyterlab>=4,<5

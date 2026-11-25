@@ -8,6 +8,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from experiment_files import plot_locations
 
 ROOT = Path(__file__).resolve().parents[1]
 TEAL, NAVY, ORANGE = "#00857d", "#263b57", "#bf6225"
@@ -125,8 +126,8 @@ def standard_errors(data_dir, output_dir):
     save(fig, output_dir, "lsm_paper_standard_errors")
 
 
-def create_figures(data_dir=ROOT / "data" / "experiments", output_dir=ROOT / "figures"):
-    data_dir, output_dir = Path(data_dir), Path(output_dir)
+def create_figures(data_dir=None, output_dir=None, quick=False):
+    data_dir, output_dir = plot_locations("paper_replication", data_dir, output_dir, quick)
     paper_table(data_dir, output_dir)
     convergence(data_dir, output_dir)
     standard_errors(data_dir, output_dir)
@@ -134,7 +135,8 @@ def create_figures(data_dir=ROOT / "data" / "experiments", output_dir=ROOT / "fi
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-dir", type=Path, default=ROOT / "data" / "experiments")
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "figures")
+    parser.add_argument("--data-dir", type=Path)
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--quick", action="store_true")
     args = parser.parse_args()
-    create_figures(args.data_dir, args.output_dir)
+    create_figures(args.data_dir, args.output_dir, args.quick)

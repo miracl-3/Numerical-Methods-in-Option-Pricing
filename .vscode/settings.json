@@ -1,5 +1,5 @@
 {
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv-portfolio/Scripts/python.exe",
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
     "python.terminal.activateEnvironment": true,
     "editor.formatOnSave": true,
     "editor.tabSize": 4,
@@ -22,5 +22,19 @@
     "C_Cpp.clang_format_style": "file",
     "C_Cpp.clang_format_fallbackStyle": "LLVM",
     "jupyter.notebookFileRoot": "${workspaceFolder}/notebooks",
-    "terminal.integrated.defaultProfile.windows": "PowerShell"
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.ipynb_checkpoints": true,
+        ".agents": true,
+        ".cache": true,
+        ".github": true,
+        ".local-archive": true,
+        ".venv": true,
+        ".vscode": true,
+        "archive": true,
+        "build": true,
+        "extensions": true,
+        "tmp": true
+    }
 }
