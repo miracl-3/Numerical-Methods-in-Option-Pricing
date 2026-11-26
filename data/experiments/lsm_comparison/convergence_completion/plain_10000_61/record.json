@@ -1,0 +1,24 @@
+{
+  "parameters": {
+    "type": "put",
+    "spot": 40,
+    "strike": 40,
+    "rate": 0.06,
+    "volatility": 0.2,
+    "maturity": 1,
+    "steps": 50,
+    "paths": 10000,
+    "train_paths": 10000,
+    "seed": 61,
+    "sampling": "plain",
+    "valuation": "in-sample",
+    "reference_steps": 50,
+    "regression_diagnostics": "regressions.csv"
+  },
+  "execution_session": "20261126T041741Z-ecc7268b",
+  "completed_at_utc": "2026-11-26T04:17:43.523996+00:00",
+  "sha256": {
+    "result.csv": "6ce2881d265677e2ae554808e5b7f50c92e85159850ba747c5673c68ef7b027a",
+    "regressions.csv": "1d3fac0f86d632de40cc1dd77328455ec8354cf15d7a05f6d3791d4a7bde5511"
+  }
+}

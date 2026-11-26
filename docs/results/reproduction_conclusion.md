@@ -1,94 +1,120 @@
-# Longstaff–Schwartz reproduction: numerical conclusion
+# Longstaff–Schwartz and plain/AV-LSM: final numerical results
 
-**Status:** Tables 1 and 2 are complete. The convergence comparison has
-180/300 unique runs; 120 plain-LSM runs remain. This report uses existing
-results only. No simulations, figures or builds were repeated.
+**Completed:** 300 distinct convergence fits: two methods × five budgets ×
+30 seeds (42–71), plus the 20-contract Table 1 and 40-policy Table 2 studies.
+This concludes the numerical investigation; no new model runs were needed.
 
-## Accuracy and variability
+## Consolidated convergence results
 
-American put: S = K = 40, r = 6%, volatility 20%, maturity one year;
-50 exercise dates plus time zero. Matched-grid CRR (100,000 time steps):
-**2.314066325**. Each method below uses 100,000 paths and 30 seeds.
+American put: S₀ = K = 40, r = 6%, σ = 20%, T = 1; 50 exercise dates plus
+time zero. Both methods use normalized weighted Laguerre regression, QR and
+in-sample valuation. Saved grid-matched CRR: **2.314066325146** (100,000 steps).
+N counts total paths; AV uses N/2 antithetic pairs.
 
-| Metric | Plain LSM | AV-LSM |
-|---|---:|---:|
-| Mean price | 2.31386219 | 2.31350400 |
-| Mean error against CRR | −0.00020413 | −0.00056232 |
-| Empirical SD | 0.00879290 | 0.00545889 |
-| Empirical variance | 0.0000773151 | 0.0000297995 |
-| RMSE against CRR, across 30 runs | 0.00864752 | 0.00539652 |
-| Mean reported SE / empirical SD | 0.9902 | 0.9754 |
-| Recorded median runtime | 465 ms | 379 ms |
-| Relative computational efficiency | 1.00 | 3.18 |
-| Table 1 RMSE vs published AV prices, 20 contracts | 0.01509683 | 0.00902140 |
-| Table 1 RMSE vs matched CRR, 20 contracts | 0.00899781 | 0.00810792 |
+| N | Method | Mean price | Empirical SD | Estimated bias* | RMSE* | Mean SE / SD | AV variance reduction |
+|---:|:---|---:|---:|---:|---:|---:|---:|
+| 5,000 | Plain | 2.324806 | 0.043388 | +0.010739 | 0.043990 | 0.892 | — |
+| 5,000 | AV | 2.320802 | 0.023444 | +0.006736 | 0.024014 | 1.018 | 70.80% |
+| 10,000 | Plain | 2.320744 | 0.031578 | +0.006677 | 0.031758 | 0.874 | — |
+| 10,000 | AV | 2.316776 | 0.016725 | +0.002709 | 0.016666 | 1.009 | 71.95% |
+| 25,000 | Plain | 2.314231 | 0.016375 | +0.000165 | 0.016101 | 1.063 | — |
+| 25,000 | AV | 2.315370 | 0.010377 | +0.001304 | 0.010286 | 1.028 | 59.84% |
+| 50,000 | Plain | 2.311899 | 0.013061 | −0.002167 | 0.013023 | 0.942 | — |
+| 50,000 | AV | 2.314339 | 0.006497 | +0.000272 | 0.006394 | 1.160 | 75.26% |
+| 100,000 | Plain | 2.313862 | 0.008793 | −0.000204 | 0.008648 | 0.990 | — |
+| 100,000 | AV | 2.313504 | 0.005459 | −0.000562 | 0.005397 | 0.975 | 61.46% |
 
-AV-LSM reduces observed variance by **61.46%** (factor **2.5945**).
-All 20 AV published-price discrepancies lie within ±1.96 combined SEs;
-19/20 plain discrepancies do. This supports numerical agreement, not exact
-random-sample reproduction. Reported SEs closely match repeated-run SD here.
+*Estimated bias = mean price − CRR; RMSE = √mean((price − CRR)²).
+These estimate error relative to a numerical reference, not the unknown exact
+price. SD uses denominator 29. Reduction = 100(1 − SD_AV²/SD_plain²).
+Source: [completed summary](../../data/experiments/lsm_comparison/convergence_completion/convergence_summary.csv).
 
-## Available convergence results
+**Accuracy:** AV has lower RMSE at every budget; neither method's estimated
+bias decreases monotonically. All ten pointwise mean-price 95% Student-t
+intervals, mean ± 2.04523 × SD/√30, include matched CRR. This is uncertainty
+about the estimator mean, not the dispersion of individual runs or proof of zero bias.
 
-Thirty independent fits per row; AV path counts include both members of each pair.
+## Empirical order, variance constant and SE calibration
 
-| AV paths | Mean price | Empirical SD | RMSE vs CRR | Mean SE / SD |
-|---:|---:|---:|---:|---:|
-| 5,000 | 2.320802 | 0.023444 | 0.024014 | 1.0180 |
-| 10,000 | 2.316776 | 0.016725 | 0.016666 | 1.0091 |
-| 25,000 | 2.315370 | 0.010377 | 0.010286 | 1.0283 |
-| 50,000 | 2.314339 | 0.006497 | 0.006394 | 1.1599 |
-| 100,000 | 2.313504 | 0.005459 | 0.005397 | 0.9754 |
+OLS log(SD) = a + b log(N), using five observed budgets, gives
+**b_plain = −0.5384** (R² = 0.9903) and **b_AV = −0.5089** (R² = 0.9888),
+both close to the Monte Carlo reference **−0.5**.
 
-AV SD falls by 4.29× as paths increase 20×, broadly consistent with the
-sqrt(20) = 4.47 Monte Carlo scaling. RMSE also declines. The 50,000-path SE
-exceeds observed SD by 16%; thirty runs give uncertain calibration estimates.
-A comparison of convergence rates awaits the missing plain runs.
+The evidence supports **a lower variance constant with approximately preserved
+convergence order**. Under Var ≈ C/N, the observed N × SD² ranges are
+**6.70–9.97 plain** and **2.11–2.98 AV**. These finite-budget estimates do not
+prove identical asymptotic orders or convergence to the true American price.
 
-## Table 2 and limitations
+Reported-SE/empirical-SD ratios span **0.874–1.063 plain** and **0.975–1.160 AV**.
+Plain SEs understate observed spread by about 11–13% at 5k/10k; AV overstates it
+by 16% at 50k. At 100k, agreement is within 2.5%. Thirty runs leave appreciable
+uncertainty in SD and calibration; AV SEs correctly use pair averages.
 
-All eight contracts have five paired in/out valuations: **40 fitted policies,
-80 prices**. Mean in-minus-out difference across cases/runs is **0.005699**.
-Seven of eight paired 95% t intervals include zero. For S = 36, volatility
-40%, maturity two years: difference **0.017141**, CI **[0.000579, 0.033702]**.
+## Agreement with Longstaff–Schwartz
 
-- In-sample SEs are approximate because regressions couple payoffs. AV SEs use
-  pair averages. Out-of-sample within-run SEs condition on the fitted policy.
-- Five-run paired t intervals assume approximately normal differences; they are
-  pointwise, with no multiple-comparison adjustment. Shared seeds correlate cases.
-- A finite exercise grid, fixed Laguerre basis and finite training sample leave
-  discretization and policy errors. CRR also has numerical error. Thirty-run
-  variance/RMSE estimates and one-seed Table 1 comparisons do not establish bias.
-- The paper omits RNG, seeds and its SE formula. Its printed SEs resemble the
-  individual-path diagnostic, which ignores antithetic covariance; that convention
-  remains an inference. Exact printed rows cannot be reproduced.
-- Efficiency is 1/(variance × median runtime), relative to plain LSM, using the
-  same saved build/session. It excludes bias and depends on machine load; later
-  completion timings must not be compared directly with historical AV timings.
+**Table 1:** AV RMSE against the 20 published AV prices is **0.009021**
+(maximum absolute difference **0.016837**); plain RMSE is **0.015097**.
+All 20 AV and 19/20 plain discrepancies fall within ±1.96 combined reported
+SEs. Against matched CRR across these contracts, RMSE is **0.008108 AV**
+and **0.008998 plain**. This is close numerical agreement, with descriptive
+thresholds rather than a simultaneous test or exact sample replication.
 
-## Execute only the missing runs
+**Table 2:** the eight-contract, five-fit frozen-policy procedure is reproduced.
+Our mean in-minus-out difference is **+0.005699**, versus **−0.000900** calculated
+from the paper's printed prices. Maximum absolute individual differences are
+**0.048475** and **0.035000**, respectively. Seven of our eight paired 95% t
+intervals include zero; S₀ = 36, σ = 40%, T = 2 gives **0.017141**
+with CI **[0.000579, 0.033702]**. Both datasets contain differences of both
+signs, but our diagnostic does not establish universally negligible fitting bias.
+Paper rows and our seeds cannot be paired across studies.
+[Published Table 2](../../data/reference/longstaff_schwartz_2001/table2.csv);
+[our paired summary](../../data/experiments/lsm_analysis/full/table2_summary.csv).
 
-Missing: **plain LSM × {5,000, 10,000, 25,000, 50,000} paths × seeds 42–71**.
-Use the same contract above, weighted Laguerre basis and in-sample valuation;
-training and valuation path counts both equal the stated budget.
+## Comparable computational efficiency
 
-```powershell
-Set-Location 'D:\Projects\Capstone Thesis'
-# Preview only (120 pending on the current saved state):
-& .\.venv\Scripts\python.exe .\scripts\run_missing_lsm.py
-# Execute; use this same command to resume after interruption:
-& .\.venv\Scripts\python.exe .\scripts\run_missing_lsm.py --run --workers 2
-```
+Use only the original controlled 100k experiment: median **465 ms plain**
+versus **379 ms AV**; variance × median-runtime products are **3.593×10⁻⁵**
+and **1.130×10⁻⁵ price²·s**. AV relative efficiency is **3.18×**.
+This is a variance–time comparison, not a bias-adjusted ranking.
+The new 120 fits span two execution sessions (119 + 1); their timings are not
+pooled with historical AV timings for lower-budget efficiency claims.
+[Saved timing summary](../../data/experiments/lsm_analysis/full/efficiency.csv).
 
-The runner preserves full results and checkpoints each fit under
-`data/experiments/lsm_comparison/convergence_completion/`. It reuses the saved
-100,000-step CRR from the replication CSV; the existing executable additionally
-emits its cheap 50-step local diagnostic. No fine CRR is recomputed. Completion
-writes individual CSVs, regression diagnostics, a manifest, all 300 combined
-convergence rows and `convergence_summary.csv`; it does not redraw figures.
-Only the preview and isolated checkpoint checks were executed during handover.
+## Thesis figures and remaining limits
 
-Sources: [saved statistical summaries](../../data/experiments/lsm_analysis/full),
-[replication summary](../../data/experiments/paper_replication/full/lsm_paper_summary.json),
-[comparison manifest](../../data/experiments/lsm_comparison/full/manifest.json).
-[Existing figures and metric definitions](statistical_figures.md).
+Use these existing SVGs in the main results chapter:
+
+1. [Signed pricing errors](../../figures/lsm_analysis/full/signed_pricing_errors.svg):
+   Table 1 agreement with published AV prices and matched CRR.
+2. [Table 2 paired comparisons](../../figures/lsm_analysis/full/in_sample_out_of_sample.svg):
+   mean differences and correctly paired confidence intervals.
+3. [Variance reduction and efficiency](../../figures/lsm_analysis/full/variance_and_efficiency.svg):
+   the controlled 100k result; label this budget explicitly.
+
+**Figure gap:** the saved [convergence panel](../../figures/lsm_analysis/convergence/price_sd_rmse_convergence.svg)
+still represents the earlier 180-run dataset. It is not the final five-budget
+plain/AV comparison. Use the consolidated table above for the completed
+investigation; no figures were regenerated in this documentation-only update.
+
+- Exact GBM transitions avoid path-discretization bias, but finite exercise
+  dates, a fixed regression basis and finite training samples leave policy/grid
+  error. The matched CRR tree also retains numerical error.
+- In-sample regression couples payoffs, making within-run SEs approximate.
+  Out-of-sample within-run SEs condition on one fitted policy.
+- Five budgets and thirty fits give descriptive slopes. Shared seeds correlate
+  budgets; no independent-error slope CI or equality-of-orders test is claimed.
+  Table 2 has only five pairs per contract; t intervals assume approximate
+  normality and are pointwise, without multiplicity adjustment.
+- Published prices are rounded; RNG, seeds and the original SE formula are
+  undisclosed. The printed SEs resemble individual-path SEs, but that ignores
+  antithetic covariance. The known Table 2 sign typo is preserved; differences
+  above are calculated from printed prices.
+- Results concern this contract and path range; lower variance alone proves
+  neither lower bias nor convergence to the true continuous-exercise value.
+
+Provenance: [completion manifest](../../data/experiments/lsm_comparison/convergence_completion/manifest.json)
+records 120 completed fits. Original-input and aggregate-output hashes match;
+all 300 aggregate rows have the expected method/budget/seed keys and reproduce
+the saved summaries. Individual checkpoint folders were inaccessible in this
+session, so their per-file hashes were not rechecked. Only results documentation
+was updated; no simulations, CRR calculations, builds or tests were run.

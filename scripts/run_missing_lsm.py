@@ -14,6 +14,7 @@ import math
 from pathlib import Path
 import subprocess
 from tempfile import TemporaryDirectory
+from uuid import uuid4
 
 from build import ROOT, executable
 from run_experiments import run
@@ -87,7 +88,7 @@ def build_provenance(build_dir):
             "build": metadata}
 
 
-def execute_fit(build_dir, output, key, reference, reference_file):
+def execute_fit(build_dir, output, key, reference, reference_file, execution_session):
     method, paths, seed = key
     destination = output / run_name(key)
     if destination.exists():
@@ -103,10 +104,11 @@ def execute_fit(build_dir, output, key, reference, reference_file):
         rows = run("lsm_american", build_dir, **parameters)
         check_result(rows, key)
         rows[0].update(comparison_reference_crr=reference, comparison_reference_steps=100000,
-                       reference_source=reference_file, experiment=EXPERIMENT)
+                       reference_source=reference_file, experiment=EXPERIMENT, execution_session=execution_session)
         write_rows(stage / "result.csv", rows)
         parameters["regression_diagnostics"] = "regressions.csv"
         write_json(stage / "record.json", {"parameters": parameters,
+                   "execution_session": execution_session,
                    "completed_at_utc": datetime.now(timezone.utc).isoformat(),
                    "sha256": {name: sha256(stage / name) for name in ("result.csv", "regressions.csv")}})
         stage.rename(destination)
@@ -169,8 +171,9 @@ def collect(build_dir, output, execute=False, workers=2):
                    "created_at_utc": datetime.now(timezone.utc).isoformat(),
                    "timing_note": "New timings are a separate session; compare efficiency using the original controlled 100000-path runs.",
                    "reference_note": "Reuse saved fine CRR. The existing LSM executable also emits its cheap 50-step local reference."})
+    execution_session = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-") + uuid4().hex[:8]
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = [pool.submit(execute_fit, build_dir, output, key, reference, reference_file) for key in pending]
+        futures = [pool.submit(execute_fit, build_dir, output, key, reference, reference_file, execution_session) for key in pending]
         for i, future in enumerate(as_completed(futures), 1):
             key = future.result()
             print(f"Saved {i}/{len(pending)}: {run_name(key)}", flush=True)
@@ -190,6 +193,11 @@ def collect(build_dir, output, execute=False, workers=2):
         summary.update(sampling_method=method, paths=int(paths), empirical_variance=summary["empirical_sd"]**2)
         summaries.append(summary)
     write_rows(output / "convergence_summary.csv", summaries)
+    manifest = json.loads(manifest_path.read_text())
+    manifest["outputs_sha256"] = {name: sha256(output/name) for name in
+                                  ("convergence.csv", "combined_convergence.csv", "convergence_summary.csv")}
+    manifest["completed_fits"] = len(rows)
+    write_json(manifest_path, manifest)
     print(f"Complete: {len(combined)} unique runs; summaries in {output}. Figures were not regenerated.")
 
 

@@ -1,0 +1,5 @@
+sampling_method,paths,missing_runs,first_seed,last_seed,spot,strike,volatility,maturity,exercise_dates
+plain,5000,30,42,71,40,40,0.2,1,50
+plain,10000,30,42,71,40,40,0.2,1,50
+plain,25000,30,42,71,40,40,0.2,1,50
+plain,50000,30,42,71,40,40,0.2,1,50

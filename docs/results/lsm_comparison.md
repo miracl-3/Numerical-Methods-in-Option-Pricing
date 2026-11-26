@@ -1,5 +1,9 @@
 # Plain LSM and AV-LSM: implementation review and measured comparison
 
+For the completed five-budget investigation and consolidated numerical table,
+see the [final results](reproduction_conclusion.md). This document records the
+earlier implementation review and 100k controlled experiment.
+
 Run on 26 November 2026, C++17/GCC 16.1.0 with portable `-O2`.
 The [implementation guide](../methodology.md) explains the equations,
 function mapping, pseudocode, complexity, CSV schema and deterministic example.

@@ -1,5 +1,10 @@
 # Statistical figures from saved LSM results
 
+This guide describes the earlier figure exports. The **completed 300-run
+investigation**, consolidated table and thesis figure selection are in the
+[final numerical report](reproduction_conclusion.md). Historical missing-data
+labels below do not describe the current numerical dataset.
+
 These figures reuse the preserved full research CSVs. No simulations, CRR
 calculations, compilation, tests or environment checks were run for this update.
 Pricing algorithms and the repository structure were unchanged.
@@ -74,7 +79,7 @@ paper does not disclose its random streams, so its printed rows cannot be
 paired with our runs.
 Inclusion of zero does not establish equality or absence of fitting bias.
 
-## Findings and missing configurations
+## Findings and historical figure coverage
 
 At 100,000 paths, empirical SDs are 0.00879290 (plain) and 0.00545889 (AV).
 Mean reported SEs are 0.00870650 and 0.00532478; calibration ratios are 0.9902
@@ -94,13 +99,13 @@ pointwise 95% CI [0.000579, 0.033702]. The
 contains all eight cases. These limited data do not justify a general claim
 of negligible fitting bias.
 
-AV-LSM has thirty runs at each of 5,000, 10,000, 25,000, 50,000 and 100,000 paths;
-plain LSM has thirty runs only at 100,000. Variance and efficiency comparisons
-therefore use that common budget. The
-[missing configurations](../../data/experiments/lsm_analysis/full/missing_configurations.csv)
-are plain LSM at 5,000, 10,000, 25,000 and 50,000 paths, seeds 42–71 at each
-budget, for the same one-year at-the-money contract: **120 missing runs**.
-The calibration plot leaves those points absent. None were generated.
+Both methods now have thirty runs at all five path budgets. The saved figures
+above predate the 120-fit plain completion, so their calibration panel still
+omits plain observations below 100k. The old
+[missing-configuration CSV](../../data/experiments/lsm_analysis/full/missing_configurations.csv)
+is historical evidence. Complete five-budget statistics are in the final
+report; cross-method runtime efficiency remains restricted to the controlled
+100k study. Existing figures were not regenerated.
 
 ## Redrawing
 

@@ -1,0 +1,45 @@
+{
+  "analysis_only": true,
+  "generated_at_utc": "2026-11-26T02:40:36.012021+00:00",
+  "inputs_sha256": {
+    "data/experiments/lsm_analysis/full/sampling_summary.csv": "745096b99bcee048a9e4b96a3d5e71fb8616fbd127d1fd8b3acd7d142f7c5c36",
+    "data/experiments/lsm_analysis/full/efficiency.csv": "4044eccdd882b6fa5226b6cf7d892b0a7bdedcac9e749b60649e1b8e04c345bb",
+    "data/experiments/lsm_analysis/full/missing_configurations.csv": "fc68d484484479f984af437b9b214693dd1adad874feb435c048a3bb42862857",
+    "data/experiments/paper_replication/full/lsm_paper_convergence.csv": "ee67d6b9c5183f3be89206c7deb1a1b208236511e8a0f374a22835620f6a28a8",
+    "data/experiments/lsm_comparison/full/replicates.csv": "35309b5aa7536ae9813e366fd8fa607d7fd151ebf84c7edc9fe0069fd56696dc",
+    "data/experiments/paper_replication/full/lsm_paper_table.csv": "f0256fdff666b1d063daf769e6f4504cdeae71b6792962f93196243eaf9e3b07",
+    "data/experiments/lsm_analysis/full/manifest.json": "a7fe360514ed1e59ac88a491e5d656b4e2d5895b65f5972235fd5954b2ed7302"
+  },
+  "plotting_source_sha256": {
+    "scripts/plot_lsm_convergence.py": "9f4e00df970aae8ec932f13e1a31a76bfd2ca3cf68353575c60ddd555d77766e",
+    "scripts/analyze_lsm.py": "d57b3d6be7f6c6042b59b2902e01ff64be780ad22051c5e16cefefeef3c1bb3b",
+    "scripts/plot_lsm_paper.py": "4f7db5faf6ff3038f4f7aa5dc2dff4a34255b64554f38a972a1f2263fbf342e2"
+  },
+  "reference": {
+    "grid_matched_crr": 2.3140663251464497,
+    "time_steps": 100000,
+    "exercise_dates": 50
+  },
+  "mean_ci": {
+    "distribution": "Student t",
+    "df": 29,
+    "critical_value": 2.045229642132703,
+    "level": 0.95,
+    "scope": "Pointwise CI for mean over repeated complete fits; approximate normality of run estimates."
+  },
+  "reused_figure": {
+    "path": "figures/lsm_analysis/full/variance_and_efficiency.png",
+    "sha256": "510b505697bc9e479a7890e4c87ae737c041018f42d5a66e82f2f41501658944",
+    "scope": "Variance reduction and relative computational efficiency at the only common budget, 100000."
+  },
+  "missing_runs": 120,
+  "simulations_run": 0,
+  "crr_calculations_run": 0,
+  "limitations": [
+    "No plain observations below 100000; no interpolation of observations.",
+    "Price CIs quantify uncertainty in the estimator mean, not uncertainty from exercise-grid or policy bias.",
+    "Empirical SD and RMSE use 30 runs; lower variance alone does not prove convergence to the true price.",
+    "The SD slope guide is anchored to the observed AV 5000-path SD, not fitted observations.",
+    "Runtime cohorts remain separate; lower-budget cross-method efficiency is unsupported."
+  ]
+}
